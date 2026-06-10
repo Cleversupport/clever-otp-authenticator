@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - The release ZIP must contain/install into the correct WordPress plugin folder:
  *   otp-authenticator, so the plugin file remains otp-authenticator/otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
- *   clever_otp_authenticator_github_token option from Settings > Clever OTP Updates.
+ *   clever_otp_authenticator_github_token option from the Updates tab in OTP Authenticator.
  */
 class Clever_OTP_Authenticator_GitHub_Updater {
 	/** GitHub repository owner. */
@@ -43,11 +43,11 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/** WordPress.org-style plugin slug. */
 	const PLUGIN_SLUG = 'otp-authenticator';
 
-	/** Settings page slug. */
-	const SETTINGS_PAGE_SLUG = 'clever-otp-updates';
-
 	/** Settings group name. */
 	const SETTINGS_GROUP = 'clever_otp_authenticator_updater';
+
+	/** Settings tab slug inside OTP Authenticator. */
+	const TAB_SLUG = 'github-updates';
 
 	/** User agent sent to GitHub. */
 	const USER_AGENT = 'Clever-OTP-Authenticator-Updater';
@@ -106,7 +106,8 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		add_action( 'upgrader_process_complete', array( $this, 'clear_cache' ), 10, 2 );
 
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
+		add_action( 'otpa_after_main_tab_settings', array( $this, 'render_settings_tab' ), 20, 1 );
+		add_action( 'otpa_after_main_settings', array( $this, 'render_settings_panel' ), 20, 1 );
 		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_settings_link' ) );
 	}
 
@@ -128,18 +129,17 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Add the GitHub updater settings page under Settings.
+	 * Render the Updates tab inside the main OTP Authenticator settings page.
 	 *
+	 * @param string $active_tab Active settings tab.
 	 * @return void
 	 */
-	public function register_settings_page() {
-		add_options_page(
-			__( 'Clever OTP Updates', 'otpa' ),
-			__( 'Clever OTP Updates', 'otpa' ),
-			'manage_options',
-			self::SETTINGS_PAGE_SLUG,
-			array( $this, 'render_settings_page' )
-		);
+	public function render_settings_tab( $active_tab ) {
+		?>
+		<a href="<?php echo esc_url( admin_url( 'options-general.php?page=otpa&tab=' . self::TAB_SLUG ) ); ?>" class="nav-tab<?php echo ( self::TAB_SLUG === $active_tab ) ? ' nav-tab-active' : ''; ?>">
+			<?php esc_html_e( 'Updates', 'otpa' ); ?>
+		</a>
+		<?php
 	}
 
 	/**
@@ -151,7 +151,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	public function add_settings_link( $links ) {
 		$settings_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
-			esc_url( admin_url( 'options-general.php?page=' . self::SETTINGS_PAGE_SLUG ) ),
+			esc_url( admin_url( 'options-general.php?page=otpa&tab=' . self::TAB_SLUG ) ),
 			esc_html__( 'Update Settings', 'otpa' )
 		);
 
@@ -189,11 +189,16 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Render the updater settings page.
+	 * Render the updater settings panel inside the OTP Authenticator settings page.
 	 *
+	 * @param string $active_tab Active settings tab.
 	 * @return void
 	 */
-	public function render_settings_page() {
+	public function render_settings_panel( $active_tab ) {
+		if ( self::TAB_SLUG !== $active_tab ) {
+			return;
+		}
+
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
@@ -202,98 +207,100 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		$has_saved_token    = '' !== trim( (string) get_option( self::TOKEN_OPTION, '' ) );
 		$has_token          = '' !== $this->get_token();
 		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'Clever OTP Updates', 'otpa' ); ?></h1>
+		<div class="stuffbox">
+			<div class="inside">
+				<h2><?php echo esc_html__( 'Updates', 'otpa' ); ?></h2>
 
-			<p>
-				<?php
-				echo esc_html__(
-					'Use this page to connect Clever OTP Authenticator to private GitHub Releases. Public repositories do not need a token.',
-					'otpa'
-				);
-				?>
-			</p>
+				<p>
+					<?php
+					echo esc_html__(
+						'Use this section to connect Clever OTP Authenticator to private GitHub Releases. Public repositories do not need a token.',
+						'otpa'
+					);
+					?>
+				</p>
 
-			<?php if ( $has_token ) : ?>
-				<div class="notice notice-success inline">
-					<p><?php esc_html_e( 'A GitHub token is currently configured for plugin updates.', 'otpa' ); ?></p>
-				</div>
-			<?php else : ?>
-				<div class="notice notice-warning inline">
-					<p><?php esc_html_e( 'No GitHub token is configured. Private repository updates will not work until a token is saved.', 'otpa' ); ?></p>
-				</div>
-			<?php endif; ?>
+				<?php if ( $has_token ) : ?>
+					<div class="notice notice-success inline">
+						<p><?php esc_html_e( 'A GitHub token is currently configured for plugin updates.', 'otpa' ); ?></p>
+					</div>
+				<?php else : ?>
+					<div class="notice notice-warning inline">
+						<p><?php esc_html_e( 'No GitHub token is configured. Private repository updates will not work until a token is saved.', 'otpa' ); ?></p>
+					</div>
+				<?php endif; ?>
 
-			<?php if ( $has_constant_token ) : ?>
-				<div class="notice notice-info inline">
-					<p>
-						<?php
-						printf(
-							/* translators: %s: wp-config.php constant name. */
-							esc_html__( 'The token is being loaded from the %s constant. To change it, update wp-config.php.', 'otpa' ),
-							'<code>' . esc_html( self::TOKEN_CONSTANT ) . '</code>'
-						);
-						?>
-					</p>
-				</div>
-			<?php endif; ?>
+				<?php if ( $has_constant_token ) : ?>
+					<div class="notice notice-info inline">
+						<p>
+							<?php
+							printf(
+								/* translators: %s: wp-config.php constant name. */
+								esc_html__( 'The token is being loaded from the %s constant. To change it, update wp-config.php.', 'otpa' ),
+								'<code>' . esc_html( self::TOKEN_CONSTANT ) . '</code>'
+							);
+							?>
+						</p>
+					</div>
+				<?php endif; ?>
 
-			<form method="post" action="options.php">
-				<?php settings_fields( self::SETTINGS_GROUP ); ?>
+				<form method="post" action="options.php">
+					<?php settings_fields( self::SETTINGS_GROUP ); ?>
 
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="<?php echo esc_attr( self::TOKEN_OPTION ); ?>">
-								<?php esc_html_e( 'GitHub Token', 'otpa' ); ?>
-							</label>
-						</th>
-						<td>
-							<input
-								name="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
-								id="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
-								type="password"
-								class="regular-text"
-								value=""
-								autocomplete="new-password"
-								<?php disabled( $has_constant_token ); ?>
-							>
-							<p class="description">
-								<?php
-								if ( $has_constant_token ) {
-									esc_html_e( 'This field is disabled because the token is defined in wp-config.php.', 'otpa' );
-								} elseif ( $has_saved_token ) {
-									esc_html_e( 'A token is saved. Leave this field blank to keep the current token, or enter a new token to replace it.', 'otpa' );
-								} else {
-									esc_html_e( 'Paste a GitHub fine-grained or classic token that can read this private repository and its releases.', 'otpa' );
-								}
-								?>
-							</p>
-
-							<?php if ( $has_saved_token && ! $has_constant_token ) : ?>
-								<label>
-									<input type="checkbox" name="clever_otp_authenticator_clear_github_token" value="1">
-									<?php esc_html_e( 'Clear saved token', 'otpa' ); ?>
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( self::TOKEN_OPTION ); ?>">
+									<?php esc_html_e( 'GitHub Token', 'otpa' ); ?>
 								</label>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Repository', 'otpa' ); ?></th>
-						<td>
-							<code><?php echo esc_html( self::OWNER . '/' . self::REPO ); ?></code>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Installed Version', 'otpa' ); ?></th>
-						<td>
-							<code><?php echo esc_html( $this->current_version ); ?></code>
-						</td>
-					</tr>
-				</table>
+							</th>
+							<td>
+								<input
+									name="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
+									id="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
+									type="password"
+									class="regular-text"
+									value=""
+									autocomplete="new-password"
+									<?php disabled( $has_constant_token ); ?>
+								>
+								<p class="description">
+									<?php
+									if ( $has_constant_token ) {
+										esc_html_e( 'This field is disabled because the token is defined in wp-config.php.', 'otpa' );
+									} elseif ( $has_saved_token ) {
+										esc_html_e( 'A token is saved. Leave this field blank to keep the current token, or enter a new token to replace it.', 'otpa' );
+									} else {
+										esc_html_e( 'Paste a GitHub fine-grained or classic token that can read this private repository and its releases.', 'otpa' );
+									}
+									?>
+								</p>
 
-				<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
-			</form>
+								<?php if ( $has_saved_token && ! $has_constant_token ) : ?>
+									<label>
+										<input type="checkbox" name="clever_otp_authenticator_clear_github_token" value="1">
+										<?php esc_html_e( 'Clear saved token', 'otpa' ); ?>
+									</label>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Repository', 'otpa' ); ?></th>
+							<td>
+								<code><?php echo esc_html( self::OWNER . '/' . self::REPO ); ?></code>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Installed Version', 'otpa' ); ?></th>
+							<td>
+								<code><?php echo esc_html( $this->current_version ); ?></code>
+							</td>
+						</tr>
+					</table>
+
+					<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
+				</form>
+			</div>
 		</div>
 		<?php
 	}
@@ -437,7 +444,6 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 		return $tmp_file;
 	}
-
 
 	/**
 	 * Ensure the extracted update installs into the otp-authenticator folder.
