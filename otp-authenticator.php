@@ -26,6 +26,12 @@ if ( ! defined( 'OTPA_PLUGIN_URL' ) ) {
 
 require_once OTPA_PLUGIN_PATH . 'inc/class-otpa-logger.php';
 require_once OTPA_PLUGIN_PATH . 'inc/class-otpa.php';
+require_once OTPA_PLUGIN_PATH . 'inc/class-clever-otp-authenticator-github-updater.php';
+
+if ( is_admin() ) {
+	$clever_otp_authenticator_github_updater = new Clever_OTP_Authenticator_GitHub_Updater( __FILE__ );
+	$clever_otp_authenticator_github_updater->register_hooks();
+}
 
 register_activation_hook( __FILE__, array( 'Otpa', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Otpa', 'deactivate' ) );
