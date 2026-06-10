@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - The release ZIP must contain/install into the correct WordPress plugin folder:
  *   otp-authenticator, so the plugin file remains otp-authenticator/otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
- *   clever_otp_authenticator_github_token option.
+ *   clever_otp_authenticator_github_token option from Settings > Clever OTP Updates.
  */
 class Clever_OTP_Authenticator_GitHub_Updater {
 	/** GitHub repository owner. */
@@ -37,8 +37,17 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/** WordPress option containing an optional GitHub token. */
 	const TOKEN_OPTION = 'clever_otp_authenticator_github_token';
 
+	/** Optional wp-config.php constant containing a GitHub token. */
+	const TOKEN_CONSTANT = 'CLEVER_OTP_AUTHENTICATOR_GITHUB_TOKEN';
+
 	/** WordPress.org-style plugin slug. */
 	const PLUGIN_SLUG = 'otp-authenticator';
+
+	/** Settings page slug. */
+	const SETTINGS_PAGE_SLUG = 'clever-otp-updates';
+
+	/** Settings group name. */
+	const SETTINGS_GROUP = 'clever_otp_authenticator_updater';
 
 	/** User agent sent to GitHub. */
 	const USER_AGENT = 'Clever-OTP-Authenticator-Updater';
@@ -95,6 +104,198 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		add_filter( 'upgrader_pre_download', array( $this, 'download_private_package' ), 10, 4 );
 		add_filter( 'upgrader_source_selection', array( $this, 'ensure_plugin_folder_name' ), 10, 4 );
 		add_action( 'upgrader_process_complete', array( $this, 'clear_cache' ), 10, 2 );
+
+		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
+		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_settings_link' ) );
+	}
+
+	/**
+	 * Register updater settings.
+	 *
+	 * @return void
+	 */
+	public function register_settings() {
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::TOKEN_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_token' ),
+				'default'           => '',
+			)
+		);
+	}
+
+	/**
+	 * Add the GitHub updater settings page under Settings.
+	 *
+	 * @return void
+	 */
+	public function register_settings_page() {
+		add_options_page(
+			__( 'Clever OTP Updates', 'otpa' ),
+			__( 'Clever OTP Updates', 'otpa' ),
+			'manage_options',
+			self::SETTINGS_PAGE_SLUG,
+			array( $this, 'render_settings_page' )
+		);
+	}
+
+	/**
+	 * Add a direct settings link from the Plugins screen.
+	 *
+	 * @param array $links Existing plugin action links.
+	 * @return array
+	 */
+	public function add_settings_link( $links ) {
+		$settings_link = sprintf(
+			'<a href="%1$s">%2$s</a>',
+			esc_url( admin_url( 'options-general.php?page=' . self::SETTINGS_PAGE_SLUG ) ),
+			esc_html__( 'Update Settings', 'otpa' )
+		);
+
+		array_unshift( $links, $settings_link );
+
+		return $links;
+	}
+
+	/**
+	 * Sanitize and save the GitHub token.
+	 *
+	 * Leaving the field blank keeps the existing token. Checking the clear box
+	 * deletes the saved token. Updating or clearing the token clears update cache.
+	 *
+	 * @param string $token Submitted token.
+	 * @return string
+	 */
+	public function sanitize_token( $token ) {
+		$clear_token = isset( $_POST['clever_otp_authenticator_clear_github_token'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		if ( $clear_token ) {
+			$this->clear_cache();
+			return '';
+		}
+
+		$token = trim( sanitize_text_field( wp_unslash( $token ) ) );
+
+		if ( '' === $token ) {
+			return (string) get_option( self::TOKEN_OPTION, '' );
+		}
+
+		$this->clear_cache();
+
+		return $token;
+	}
+
+	/**
+	 * Render the updater settings page.
+	 *
+	 * @return void
+	 */
+	public function render_settings_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$has_constant_token = $this->has_constant_token();
+		$has_saved_token    = '' !== trim( (string) get_option( self::TOKEN_OPTION, '' ) );
+		$has_token          = '' !== $this->get_token();
+		?>
+		<div class="wrap">
+			<h1><?php echo esc_html__( 'Clever OTP Updates', 'otpa' ); ?></h1>
+
+			<p>
+				<?php
+				echo esc_html__(
+					'Use this page to connect Clever OTP Authenticator to private GitHub Releases. Public repositories do not need a token.',
+					'otpa'
+				);
+				?>
+			</p>
+
+			<?php if ( $has_token ) : ?>
+				<div class="notice notice-success inline">
+					<p><?php esc_html_e( 'A GitHub token is currently configured for plugin updates.', 'otpa' ); ?></p>
+				</div>
+			<?php else : ?>
+				<div class="notice notice-warning inline">
+					<p><?php esc_html_e( 'No GitHub token is configured. Private repository updates will not work until a token is saved.', 'otpa' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( $has_constant_token ) : ?>
+				<div class="notice notice-info inline">
+					<p>
+						<?php
+						printf(
+							/* translators: %s: wp-config.php constant name. */
+							esc_html__( 'The token is being loaded from the %s constant. To change it, update wp-config.php.', 'otpa' ),
+							'<code>' . esc_html( self::TOKEN_CONSTANT ) . '</code>'
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+
+			<form method="post" action="options.php">
+				<?php settings_fields( self::SETTINGS_GROUP ); ?>
+
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">
+							<label for="<?php echo esc_attr( self::TOKEN_OPTION ); ?>">
+								<?php esc_html_e( 'GitHub Token', 'otpa' ); ?>
+							</label>
+						</th>
+						<td>
+							<input
+								name="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
+								id="<?php echo esc_attr( self::TOKEN_OPTION ); ?>"
+								type="password"
+								class="regular-text"
+								value=""
+								autocomplete="new-password"
+								<?php disabled( $has_constant_token ); ?>
+							>
+							<p class="description">
+								<?php
+								if ( $has_constant_token ) {
+									esc_html_e( 'This field is disabled because the token is defined in wp-config.php.', 'otpa' );
+								} elseif ( $has_saved_token ) {
+									esc_html_e( 'A token is saved. Leave this field blank to keep the current token, or enter a new token to replace it.', 'otpa' );
+								} else {
+									esc_html_e( 'Paste a GitHub fine-grained or classic token that can read this private repository and its releases.', 'otpa' );
+								}
+								?>
+							</p>
+
+							<?php if ( $has_saved_token && ! $has_constant_token ) : ?>
+								<label>
+									<input type="checkbox" name="clever_otp_authenticator_clear_github_token" value="1">
+									<?php esc_html_e( 'Clear saved token', 'otpa' ); ?>
+								</label>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Repository', 'otpa' ); ?></th>
+						<td>
+							<code><?php echo esc_html( self::OWNER . '/' . self::REPO ); ?></code>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Installed Version', 'otpa' ); ?></th>
+						<td>
+							<code><?php echo esc_html( $this->current_version ); ?></code>
+						</td>
+					</tr>
+				</table>
+
+				<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
+			</form>
+		</div>
+		<?php
 	}
 
 	/**
@@ -450,7 +651,20 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	 * @return string
 	 */
 	private function get_token() {
+		if ( $this->has_constant_token() ) {
+			return trim( (string) constant( self::TOKEN_CONSTANT ) );
+		}
+
 		return trim( (string) get_option( self::TOKEN_OPTION, '' ) );
+	}
+
+	/**
+	 * Determine whether a GitHub token is defined in wp-config.php.
+	 *
+	 * @return bool
+	 */
+	private function has_constant_token() {
+		return defined( self::TOKEN_CONSTANT ) && '' !== trim( (string) constant( self::TOKEN_CONSTANT ) );
 	}
 
 	/**
