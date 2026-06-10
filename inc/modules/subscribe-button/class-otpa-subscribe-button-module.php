@@ -26,9 +26,6 @@ class Otpa_Subscribe_Button_Module {
 	/** Button URL option name. */
 	const OPTION_URL = 'otpa_subscribe_url';
 
-	/** Admin page slug. */
-	const PAGE_SLUG = 'otpa-subscribe';
-
 	/** Inline style handle used when no OTPA style handle is available. */
 	const STYLE_HANDLE = 'otpa-subscribe-button-module';
 
@@ -40,7 +37,8 @@ class Otpa_Subscribe_Button_Module {
 	public static function init() {
 		if ( is_admin() ) {
 			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
-			add_action( 'admin_menu', array( __CLASS__, 'register_admin_page' ) );
+			add_action( 'otpa_after_main_tab_settings', array( __CLASS__, 'render_settings_tab_link' ), 10, 1 );
+			add_action( 'otpa_after_main_settings', array( __CLASS__, 'render_settings_tab' ), 10, 1 );
 		}
 
 		add_filter( 'otpa_otp_form_vars', array( __CLASS__, 'append_subscribe_button' ), 99, 1 );
@@ -71,55 +69,59 @@ class Otpa_Subscribe_Button_Module {
 	}
 
 	/**
-	 * Add the module settings page under Settings.
+	 * Render the Subscribe Button settings tab link.
 	 *
+	 * @param string $active_tab Active OTP Authenticator settings tab.
 	 * @return void
 	 */
-	public static function register_admin_page() {
-		add_options_page(
-			__( 'OTP Subscribe Button', 'otpa' ),
-			__( 'OTP Subscribe Button', 'otpa' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( __CLASS__, 'render_settings_page' )
-		);
+	public static function render_settings_tab_link( $active_tab ) {
+		?>
+		<a href="<?php echo esc_url( admin_url( 'options-general.php?page=otpa&tab=subscribe-button' ) ); ?>" class="nav-tab<?php echo ( 'subscribe-button' === $active_tab ) ? ' nav-tab-active' : ''; ?>">
+			<?php esc_html_e( 'Subscribe Button', 'otpa' ); ?>
+		</a>
+		<?php
 	}
 
 	/**
-	 * Render the subscribe button settings page.
+	 * Render the Subscribe Button settings tab content.
 	 *
+	 * @param string $active_tab Active OTP Authenticator settings tab.
 	 * @return void
 	 */
-	public static function render_settings_page() {
+	public static function render_settings_tab( $active_tab ) {
+		if ( 'subscribe-button' !== $active_tab ) {
+			return;
+		}
 		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'OTP Subscribe Button', 'otpa' ); ?></h1>
-			<form method="post" action="options.php">
-				<?php settings_fields( self::SETTINGS_GROUP ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="<?php echo esc_attr( self::OPTION_TEXT ); ?>">
-								<?php esc_html_e( 'Button Text', 'otpa' ); ?>
-							</label>
-						</th>
-						<td>
-							<input name="<?php echo esc_attr( self::OPTION_TEXT ); ?>" id="<?php echo esc_attr( self::OPTION_TEXT ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( get_option( self::OPTION_TEXT, '' ) ); ?>">
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="<?php echo esc_attr( self::OPTION_URL ); ?>">
-								<?php esc_html_e( 'Button URL', 'otpa' ); ?>
-							</label>
-						</th>
-						<td>
-							<input name="<?php echo esc_attr( self::OPTION_URL ); ?>" id="<?php echo esc_attr( self::OPTION_URL ); ?>" type="url" class="regular-text" value="<?php echo esc_attr( get_option( self::OPTION_URL, '' ) ); ?>">
-						</td>
-					</tr>
-				</table>
-				<?php submit_button(); ?>
-			</form>
+		<div class="stuffbox">
+			<div class="inside">
+				<form method="post" action="options.php">
+					<?php settings_fields( self::SETTINGS_GROUP ); ?>
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( self::OPTION_TEXT ); ?>">
+									<?php esc_html_e( 'Button Text', 'otpa' ); ?>
+								</label>
+							</th>
+							<td>
+								<input name="<?php echo esc_attr( self::OPTION_TEXT ); ?>" id="<?php echo esc_attr( self::OPTION_TEXT ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( get_option( self::OPTION_TEXT, '' ) ); ?>">
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( self::OPTION_URL ); ?>">
+									<?php esc_html_e( 'Button URL', 'otpa' ); ?>
+								</label>
+							</th>
+							<td>
+								<input name="<?php echo esc_attr( self::OPTION_URL ); ?>" id="<?php echo esc_attr( self::OPTION_URL ); ?>" type="url" class="regular-text" value="<?php echo esc_attr( get_option( self::OPTION_URL, '' ) ); ?>">
+							</td>
+						</tr>
+					</table>
+					<?php submit_button(); ?>
+				</form>
+			</div>
 		</div>
 		<?php
 	}
