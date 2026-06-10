@@ -26,6 +26,13 @@ if ( ! defined( 'OTPA_PLUGIN_URL' ) ) {
 
 require_once OTPA_PLUGIN_PATH . 'inc/class-otpa-logger.php';
 require_once OTPA_PLUGIN_PATH . 'inc/class-otpa.php';
+require_once OTPA_PLUGIN_PATH . 'inc/class-clever-otp-authenticator-github-updater.php';
+require_once OTPA_PLUGIN_PATH . 'inc/modules/subscribe-button/class-otpa-subscribe-button-module.php';
+
+if ( is_admin() ) {
+	$clever_otp_authenticator_github_updater = new Clever_OTP_Authenticator_GitHub_Updater( __FILE__ );
+	$clever_otp_authenticator_github_updater->register_hooks();
+}
 
 register_activation_hook( __FILE__, array( 'Otpa', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Otpa', 'deactivate' ) );
@@ -46,6 +53,9 @@ function otpa_run() {
 	$otpa_objects = array( 'logger' => new Otpa_Logger( true ) );
 
 	Otpa_Integration::init();
+
+	// Load the former OTPA Subscribe Addon as an internal module so WordPress keeps one plugin package.
+	Otpa_Subscribe_Button_Module::init();
 
 	foreach ( glob( OTPA_PLUGIN_PATH . 'inc/gateways/*.php' ) as $filepath ) {
 
