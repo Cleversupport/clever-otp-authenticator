@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - The release ZIP must contain/install into the correct WordPress plugin folder:
  *   otp-authenticator, so the plugin file remains otp-authenticator/otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
- *   clever_otp_authenticator_github_token option from Settings > Clever OTP Updates.
+ *   clever_otp_authenticator_github_token option from Settings > OTP Authenticator > Updates.
  */
 class Clever_OTP_Authenticator_GitHub_Updater {
 	/** GitHub repository owner. */
@@ -43,8 +43,8 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/** WordPress.org-style plugin slug. */
 	const PLUGIN_SLUG = 'otp-authenticator';
 
-	/** Settings page slug. */
-	const SETTINGS_PAGE_SLUG = 'clever-otp-updates';
+	/** Settings tab slug. */
+	const SETTINGS_TAB = 'updates';
 
 	/** Settings group name. */
 	const SETTINGS_GROUP = 'clever_otp_authenticator_updater';
@@ -106,7 +106,8 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		add_action( 'upgrader_process_complete', array( $this, 'clear_cache' ), 10, 2 );
 
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
+		add_action( 'otpa_after_main_tab_settings', array( $this, 'render_settings_tab_link' ), 20, 1 );
+		add_action( 'otpa_after_main_settings', array( $this, 'render_settings_tab' ), 20, 1 );
 		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_settings_link' ) );
 	}
 
@@ -128,21 +129,6 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Add the GitHub updater settings page under Settings.
-	 *
-	 * @return void
-	 */
-	public function register_settings_page() {
-		add_options_page(
-			__( 'Clever OTP Updates', 'otpa' ),
-			__( 'Clever OTP Updates', 'otpa' ),
-			'manage_options',
-			self::SETTINGS_PAGE_SLUG,
-			array( $this, 'render_settings_page' )
-		);
-	}
-
-	/**
 	 * Add a direct settings link from the Plugins screen.
 	 *
 	 * @param array $links Existing plugin action links.
@@ -151,7 +137,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	public function add_settings_link( $links ) {
 		$settings_link = sprintf(
 			'<a href="%1$s">%2$s</a>',
-			esc_url( admin_url( 'options-general.php?page=' . self::SETTINGS_PAGE_SLUG ) ),
+			esc_url( admin_url( 'options-general.php?page=otpa&tab=' . self::SETTINGS_TAB ) ),
 			esc_html__( 'Update Settings', 'otpa' )
 		);
 
@@ -189,11 +175,30 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Render the updater settings page.
+	 * Render the Updates settings tab link.
 	 *
+	 * @param string $active_tab Active OTP Authenticator settings tab.
 	 * @return void
 	 */
-	public function render_settings_page() {
+	public function render_settings_tab_link( $active_tab ) {
+		?>
+		<a href="<?php echo esc_url( admin_url( 'options-general.php?page=otpa&tab=' . self::SETTINGS_TAB ) ); ?>" class="nav-tab<?php echo ( self::SETTINGS_TAB === $active_tab ) ? ' nav-tab-active' : ''; ?>">
+			<?php esc_html_e( 'Updates', 'otpa' ); ?>
+		</a>
+		<?php
+	}
+
+	/**
+	 * Render the Updates settings tab content.
+	 *
+	 * @param string $active_tab Active OTP Authenticator settings tab.
+	 * @return void
+	 */
+	public function render_settings_tab( $active_tab ) {
+		if ( self::SETTINGS_TAB !== $active_tab ) {
+			return;
+		}
+
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
@@ -202,10 +207,9 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		$has_saved_token    = '' !== trim( (string) get_option( self::TOKEN_OPTION, '' ) );
 		$has_token          = '' !== $this->get_token();
 		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'Clever OTP Updates', 'otpa' ); ?></h1>
-
-			<p>
+		<div class="stuffbox">
+			<div class="inside">
+				<p>
 				<?php
 				echo esc_html__(
 					'Use this page to connect Clever OTP Authenticator to private GitHub Releases. Public repositories do not need a token.',
@@ -226,15 +230,15 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 			<?php if ( $has_constant_token ) : ?>
 				<div class="notice notice-info inline">
-					<p>
-						<?php
+				<p>
+					<?php
 						printf(
 							/* translators: %s: wp-config.php constant name. */
 							esc_html__( 'The token is being loaded from the %s constant. To change it, update wp-config.php.', 'otpa' ),
 							'<code>' . esc_html( self::TOKEN_CONSTANT ) . '</code>'
 						);
-						?>
-					</p>
+					?>
+				</p>
 				</div>
 			<?php endif; ?>
 
@@ -295,7 +299,8 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 				<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
 			</form>
 		</div>
-		<?php
+	</div>
+	<?php
 	}
 
 	/**
