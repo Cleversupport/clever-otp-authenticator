@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
