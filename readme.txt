@@ -55,7 +55,7 @@ The patron in return may be credited with their name (or company name) and a lin
 
 This section describes how to install the plugin and get it working.
 
-1. Upload the plugin files to the `/wp-content/plugins/clever-otp-authenticator` directory, or install the plugin through the WordPress plugins screen directly for all websites to connect together
+1. Upload the plugin files to the `/wp-content/plugins/clever-otp-authenticator-main` directory, or install the plugin through the WordPress plugins screen directly for all websites to connect together
 2. Activate the plugin through the 'Plugins' screen in WordPress
 3. Edit plugin settings - follow on-screen help if necessary
 

@@ -24,7 +24,7 @@ class Otpa_Settings {
 			add_action( 'init', array( $this, 'set_cache_policy' ), 0, 0 );
 			add_action( 'admin_menu', array( $this, 'plugin_options_menu_main' ), 10, 0 );
 			add_action( 'wp_loaded', array( $this, 'init_settings_definition' ), 10, 0 );
-			add_filter( 'plugin_action_links_clever-otp-authenticator/clever-otp-authenticator.php', array( $this, 'plugin_action_links' ), 10, 1 );
+			add_filter( 'plugin_action_links_clever-otp-authenticator-main/clever-otp-authenticator.php', array( $this, 'plugin_action_links' ), 10, 1 );
 
 			add_filter( 'pre_update_option_otpa_settings', array( get_class(), 'sanitize_settings' ), 10, 2 );
 			add_filter( 'default_option_otpa_settings', array( $this, 'maybe_init_settings' ), 10, 3 );
@@ -77,7 +77,7 @@ class Otpa_Settings {
 	}
 
 	public function load_textdomain() {
-		load_plugin_textdomain( 'otpa', false, 'clever-otp-authenticator/languages' );
+		load_plugin_textdomain( 'otpa', false, 'clever-otp-authenticator-main/languages' );
 	}
 
 	public function validate() {
