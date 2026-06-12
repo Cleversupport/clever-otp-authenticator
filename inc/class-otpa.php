@@ -287,14 +287,7 @@ class Otpa {
 	public function otp_form_page() {
 		$this->add_frontend_scripts();
 
-		$default_vars = array(
-			'otp_widget'         => $this->get_otp_widget(),
-			'otp_logo_url'       => Otpa_Style_Settings::get_option( 'logo_url' ),
-			'otp_form_type'      => 'default',
-			'otp_form_title'     => __( 'Get a Verification Code', 'otpa' ),
-			'otp_footer_message' => $this->get_logout_markup(),
-		);
-		$vars         = array_merge( $default_vars, apply_filters( 'otpa_otp_form_vars', $default_vars ) );
+		$vars = $this->get_otp_form_vars();
 
 		foreach ( $vars as $key => $value ) {
 			set_query_var( $key, $value );
@@ -313,6 +306,45 @@ class Otpa {
 		}
 
 		return false;
+	}
+
+	public function get_otp_form_vars( $vars = array() ) {
+		$default_vars = array(
+			'otp_widget'         => $this->get_otp_widget(),
+			'otp_logo_url'       => Otpa_Style_Settings::get_option( 'logo_url' ),
+			'otp_form_type'      => 'default',
+			'otp_form_title'     => __( 'Get a Verification Code', 'otpa' ),
+			'otp_footer_message' => $this->get_logout_markup(),
+		);
+		$vars         = array_merge( $default_vars, apply_filters( 'otpa_otp_form_vars', $default_vars ), $vars );
+
+		return $vars;
+	}
+
+	public function render_otp_form( $vars = array(), $output = true ) {
+		$this->add_frontend_scripts();
+
+		$vars = $this->get_otp_form_vars( $vars );
+
+		foreach ( $vars as $key => $value ) {
+			set_query_var( $key, $value );
+		}
+
+		$template = locate_template( 'otpa-otp-form-card.php', false );
+
+		if ( ! $template ) {
+			$template = OTPA_PLUGIN_PATH . 'inc/templates/otpa-otp-form-card.php';
+		}
+
+		ob_start();
+		load_template( $template );
+		$html = ob_get_clean();
+
+		if ( $output ) {
+			echo $html; // @codingStandardsIgnoreLine
+		}
+
+		return $html;
 	}
 
 	public function set_otp_identifier_form_page() {
