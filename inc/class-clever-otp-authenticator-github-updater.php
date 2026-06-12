@@ -16,9 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - WordPress asks this class for plugin update data in the admin area.
  * - The updater checks the latest GitHub Release for this repository.
  * - The GitHub release version/tag must be higher than the plugin header Version.
- * - The release ZIP asset must be named clever-otp-authenticator-main.zip and
- *   contain the top-level clever-otp-authenticator-main folder, so the plugin
- *   file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
+ * - The release zipball_url source archive is used as the update package.
+ * - The extracted GitHub source folder is renamed to clever-otp-authenticator-main
+ *   so the plugin file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
  *   clever_otp_authenticator_github_token option from Settings > OTP Authenticator > Updates.
  */
@@ -46,9 +46,6 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 	/** Expected installed plugin basename. */
 	const PLUGIN_BASENAME = 'clever-otp-authenticator-main/clever-otp-authenticator.php';
-
-	/** Expected GitHub release ZIP asset filename. */
-	const PACKAGE_FILENAME = 'clever-otp-authenticator-main.zip';
 
 	/** Settings tab slug. */
 	const SETTINGS_TAB = 'updates';
@@ -387,10 +384,10 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Download private GitHub release assets using the configured token.
+	 * Download private GitHub release source archives using the configured token.
 	 *
 	 * WordPress' default downloader cannot attach the Authorization header to the
-	 * package URL. This hook handles marked package URLs when a token is present.
+	 * GitHub zipball URL. This hook handles marked package URLs when a token is present.
 	 *
 	 * @param bool        $reply    Whether to bail without returning the package.
 	 * @param string      $package  Package URL.
@@ -412,7 +409,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		}
 
 		$url      = remove_query_arg( self::PRIVATE_PACKAGE_MARKER, $package );
-		$tmp_file = wp_tempnam( self::PACKAGE_FILENAME );
+		$tmp_file = wp_tempnam( self::PLUGIN_SLUG . '.zip' );
 
 		if ( ! $tmp_file ) {
 			return new WP_Error( 'clever_otp_authenticator_temp_file', __( 'Could not create a temporary file for the plugin update.', 'otpa' ) );
@@ -597,30 +594,18 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/**
 	 * Get the best package URL from a GitHub release.
 	 *
-	 * The release asset must be named clever-otp-authenticator-main.zip because
-	 * the ZIP must install into clever-otp-authenticator-main/clever-otp-authenticator.php.
+	 * Uses GitHub's automatic source-code ZIP (zipball_url) so releases do not
+	 * require a manually uploaded asset.
 	 *
 	 * @param array $release GitHub release data.
 	 * @return string
 	 */
 	private function get_release_package_url( $release ) {
-		$package = '';
-
-		if ( ! empty( $release['assets'] ) && is_array( $release['assets'] ) ) {
-			foreach ( $release['assets'] as $asset ) {
-				if ( empty( $asset['browser_download_url'] ) || empty( $asset['name'] ) ) {
-					continue;
-				}
-
-				$asset_name = strtolower( $asset['name'] );
-
-				if ( self::PACKAGE_FILENAME === $asset_name ) {
-					$package = ! empty( $asset['url'] ) && '' !== $this->get_token() ? $asset['url'] : $asset['browser_download_url'];
-					$package = esc_url_raw( $package );
-					break;
-				}
-			}
+		if ( empty( $release['zipball_url'] ) ) {
+			return '';
 		}
+
+		$package = esc_url_raw( $release['zipball_url'] );
 
 		if ( '' !== $package && '' !== $this->get_token() ) {
 			$package = add_query_arg( self::PRIVATE_PACKAGE_MARKER, '1', $package );
@@ -637,10 +622,12 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	 */
 	private function get_github_headers( $download = false ) {
 		$headers = array(
-			'Accept'               => $download ? 'application/octet-stream' : 'application/vnd.github+json',
+			'Accept'               => 'application/vnd.github+json',
 			'User-Agent'           => self::USER_AGENT,
 			'X-GitHub-Api-Version' => '2022-11-28',
 		);
+
+		unset( $download );
 
 		$token = $this->get_token();
 
