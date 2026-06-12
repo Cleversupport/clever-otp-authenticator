@@ -16,9 +16,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - WordPress asks this class for plugin update data in the admin area.
  * - The updater checks the latest GitHub Release for this repository.
  * - The GitHub release version/tag must be higher than the plugin header Version.
- * - The release zipball_url source archive is used as the update package.
- * - The extracted GitHub source folder is renamed to clever-otp-authenticator-main
- *   so the plugin file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
+ * - A release asset named clever-otp-authenticator-main.zip is used as the
+ *   preferred update package.
+ * - The release zipball_url source archive is used only as a fallback package.
+ * - The extracted update folder is kept as clever-otp-authenticator-main so the
+ *   plugin file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
  *   clever_otp_authenticator_github_token option from Settings > OTP Authenticator > Updates.
  */
@@ -43,6 +45,9 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 	/** WordPress.org-style plugin slug and package folder. */
 	const PLUGIN_SLUG = 'clever-otp-authenticator-main';
+
+	/** Preferred release asset package filename. */
+	const RELEASE_ASSET_NAME = 'clever-otp-authenticator-main.zip';
 
 	/** Expected installed plugin basename. */
 	const PLUGIN_BASENAME = 'clever-otp-authenticator-main/clever-otp-authenticator.php';
@@ -110,6 +115,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		add_action( 'upgrader_process_complete', array( $this, 'clear_cache' ), 10, 2 );
 
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_post_clever_otp_authenticator_check_updates', array( $this, 'handle_manual_update_check' ) );
 		add_action( 'otpa_after_main_tab_settings', array( $this, 'render_settings_tab_link' ), 20, 1 );
 		add_action( 'otpa_after_main_settings', array( $this, 'render_settings_tab' ), 20, 1 );
 		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_settings_link' ) );
@@ -210,6 +216,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		$has_constant_token = $this->has_constant_token();
 		$has_saved_token    = '' !== trim( (string) get_option( self::TOKEN_OPTION, '' ) );
 		$has_token          = '' !== $this->get_token();
+		$cache_refreshed    = isset( $_GET['clever_otp_authenticator_checked'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
 		<div class="stuffbox">
 			<div class="inside">
@@ -229,6 +236,12 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 			<?php else : ?>
 				<div class="notice notice-warning inline">
 					<p><?php esc_html_e( 'No GitHub token is configured. Private repository updates will not work until a token is saved.', 'otpa' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( $cache_refreshed ) : ?>
+				<div class="notice notice-success inline">
+					<p><?php esc_html_e( 'The WordPress plugin update cache was refreshed. If a newer release is available, it will appear on the Plugins screen.', 'otpa' ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -302,9 +315,46 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 				<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
 			</form>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="clever_otp_authenticator_check_updates">
+				<?php wp_nonce_field( 'clever_otp_authenticator_check_updates' ); ?>
+				<?php submit_button( __( 'Check for Updates Now', 'otpa' ), 'secondary' ); ?>
+			</form>
 		</div>
 	</div>
 	<?php
+	}
+
+	/**
+	 * Manually refresh WordPress' plugin update cache from the Updates settings tab.
+	 *
+	 * @return void
+	 */
+	public function handle_manual_update_check() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'otpa' ) );
+		}
+
+		check_admin_referer( 'clever_otp_authenticator_check_updates' );
+
+		$this->clear_cache();
+		delete_site_transient( 'update_plugins' );
+
+		if ( function_exists( 'wp_clean_plugins_cache' ) ) {
+			wp_clean_plugins_cache( true );
+		}
+
+		wp_update_plugins();
+
+		wp_safe_redirect(
+			add_query_arg(
+				'clever_otp_authenticator_checked',
+				'1',
+				admin_url( 'options-general.php?page=otpa&tab=' . self::SETTINGS_TAB )
+			)
+		);
+		exit;
 	}
 
 	/**
@@ -384,10 +434,10 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Download private GitHub release source archives using the configured token.
+	 * Download private GitHub release packages using the configured token.
 	 *
-	 * WordPress' default downloader cannot attach the Authorization header to the
-	 * GitHub zipball URL. This hook handles marked package URLs when a token is present.
+	 * WordPress' default downloader cannot attach the Authorization header to GitHub
+	 * API package URLs. This hook handles marked package URLs when a token is present.
 	 *
 	 * @param bool        $reply    Whether to bail without returning the package.
 	 * @param string      $package  Package URL.
@@ -594,24 +644,56 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/**
 	 * Get the best package URL from a GitHub release.
 	 *
-	 * Uses GitHub's automatic source-code ZIP (zipball_url) so releases do not
-	 * require a manually uploaded asset.
+	 * Prefers the WordPress-ready clever-otp-authenticator-main.zip release asset.
+	 * GitHub's automatic source-code ZIP (zipball_url) is retained only as a fallback.
 	 *
 	 * @param array $release GitHub release data.
 	 * @return string
 	 */
 	private function get_release_package_url( $release ) {
-		if ( empty( $release['zipball_url'] ) ) {
-			return '';
-		}
+		$package = $this->get_release_asset_package_url( $release );
 
-		$package = esc_url_raw( $release['zipball_url'] );
+		if ( '' === $package && ! empty( $release['zipball_url'] ) ) {
+			$package = esc_url_raw( $release['zipball_url'] );
+		}
 
 		if ( '' !== $package && '' !== $this->get_token() ) {
 			$package = add_query_arg( self::PRIVATE_PACKAGE_MARKER, '1', $package );
 		}
 
 		return $package;
+	}
+
+	/**
+	 * Find the preferred WordPress-ready release asset package URL.
+	 *
+	 * Public repositories can use browser_download_url directly. Private repositories
+	 * use the GitHub asset API URL so the authenticated downloader can request the
+	 * binary archive with the Authorization header.
+	 *
+	 * @param array $release GitHub release data.
+	 * @return string
+	 */
+	private function get_release_asset_package_url( $release ) {
+		if ( empty( $release['assets'] ) || ! is_array( $release['assets'] ) ) {
+			return '';
+		}
+
+		foreach ( $release['assets'] as $asset ) {
+			if ( empty( $asset['name'] ) || self::RELEASE_ASSET_NAME !== $asset['name'] ) {
+				continue;
+			}
+
+			if ( '' !== $this->get_token() && ! empty( $asset['url'] ) ) {
+				return esc_url_raw( $asset['url'] );
+			}
+
+			if ( ! empty( $asset['browser_download_url'] ) ) {
+				return esc_url_raw( $asset['browser_download_url'] );
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -622,12 +704,10 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	 */
 	private function get_github_headers( $download = false ) {
 		$headers = array(
-			'Accept'               => 'application/vnd.github+json',
+			'Accept'               => $download ? 'application/octet-stream' : 'application/vnd.github+json',
 			'User-Agent'           => self::USER_AGENT,
 			'X-GitHub-Api-Version' => '2022-11-28',
 		);
-
-		unset( $download );
 
 		$token = $this->get_token();
 

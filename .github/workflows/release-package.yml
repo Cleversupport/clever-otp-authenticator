@@ -1,0 +1,45 @@
+name: Build WordPress Plugin Release Package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-package:
+    name: Build release ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build WordPress plugin package
+        run: |
+          set -euo pipefail
+
+          PACKAGE_SLUG="clever-otp-authenticator-main"
+          ZIP_NAME="${PACKAGE_SLUG}.zip"
+          BUILD_DIR="build"
+          PACKAGE_DIR="${BUILD_DIR}/${PACKAGE_SLUG}"
+
+          rm -rf "${BUILD_DIR}" "${ZIP_NAME}"
+          mkdir -p "${PACKAGE_DIR}"
+
+          rsync -a ./ "${PACKAGE_DIR}/" \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='build/' \
+            --exclude="${ZIP_NAME}"
+
+          test -f "${PACKAGE_DIR}/clever-otp-authenticator.php"
+
+          ( cd "${BUILD_DIR}" && zip -r "../${ZIP_NAME}" "${PACKAGE_SLUG}" )
+          unzip -l "${ZIP_NAME}" | grep -q "${PACKAGE_SLUG}/clever-otp-authenticator.php"
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" clever-otp-authenticator-main.zip --clobber
