@@ -77,6 +77,11 @@ jQuery(document).ready(function($) {
 				return parameterName[1] === undefined ? true : decodeURIComponent(parameterName[1]);
 			}
 		}
+	},
+	getRedirectTo          = function getRedirectTo(form) {
+		var shortcodeRedirect = form.data('redirect_to');
+
+		return shortcodeRedirect || getUrlParameter('redirect_to');
 	};
 
 	$('#otpa_id_widget').on('change', function() {
@@ -126,7 +131,7 @@ jQuery(document).ready(function($) {
 				payload: {
 					code:       form.find('#otpa_code').val(),
 					identifier: form.find('#otpa_id').val(),
-					redirect:   getUrlParameter('redirect_to'),
+					redirect:   getRedirectTo(form),
 				}
 			};
 

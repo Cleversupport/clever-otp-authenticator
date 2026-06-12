@@ -9,6 +9,7 @@ class Otpa_WP_Email_Gateway extends Otpa_Abstract_Gateway {
 	protected $error_code            = false;
 	protected $can_change_identifier = false;
 	protected $identifier_meta       = 'otpa_mail';
+	protected $email_subject         = '';
 
 	public function __construct( $init_hooks = false, $settings_renderer = false, $otpa_settings = false ) {
 		$this->name = __( 'WordPress Email', 'otpa' );
@@ -198,25 +199,48 @@ class Otpa_WP_Email_Gateway extends Otpa_Abstract_Gateway {
 	}
 
 	protected function build_message( $email, $otp_code ) {
-		$user     = wp_get_current_user();
-		$template = $this->get_option( 'message', $this->get_default_message() );
-		$message  = str_replace( '###USERNAME###', $user->display_name, $template );
-		$message  = str_replace( '###SITENAME###', get_option( 'blogname' ), $message );
-		$message  = str_replace( '###EMAIL###', $email, $message );
-		$message  = str_replace( '###CODE###', $otp_code, $message );
-		$message  = str_replace( '###SITEURL###', home_url(), $message );
+		$user                = wp_get_current_user();
+		$template            = $this->get_option( 'message', $this->get_default_message() );
+		$message             = $this->replace_dynamic_placeholders( $template, $email, $otp_code, $user );
+		$this->email_subject = $this->build_subject( $email, $otp_code, $user );
 
 		return $message;
 	}
 
+	protected function build_subject( $email, $otp_code, $user = false ) {
+		$subject = $this->get_option( 'subject', self::get_default_subject() );
+		$subject = sanitize_text_field( $subject );
+
+		if ( '' === $subject ) {
+			$subject = self::get_default_subject();
+		}
+
+		return sanitize_text_field( $this->replace_dynamic_placeholders( $subject, $email, $otp_code, $user ) );
+	}
+
+	protected function replace_dynamic_placeholders( $template, $email, $otp_code, $user = false ) {
+		if ( ! $user ) {
+			$user = wp_get_current_user();
+		}
+
+		$content = str_replace( '###USERNAME###', $user->display_name, $template );
+		$content = str_replace( '###SITENAME###', get_option( 'blogname' ), $content );
+		$content = str_replace( '###EMAIL###', $email, $content );
+		$content = str_replace( '###CODE###', $otp_code, $content );
+		$content = str_replace( '###SITEURL###', home_url(), $content );
+
+		return $content;
+	}
+
 	protected function send_sandox_request( $email, $message ) {
+		$subject = $this->email_subject ? $this->email_subject : $this->build_subject( $email, '' );
 
 		otpa_db_log(
 			array(
 				'message' => __( 'Sandbox simulated request - data sent to the Authentication Gateway: ', 'otpa' ),
 				'data'    => array(
 					'email'   => $email,
-					'subject' => $this->settings['subject'],
+					'subject' => $subject,
 					'content' => $message,
 				),
 			)
@@ -231,9 +255,11 @@ class Otpa_WP_Email_Gateway extends Otpa_Abstract_Gateway {
 	}
 
 	protected function send_request( $email, $message ) {
+		$subject = $this->email_subject ? $this->email_subject : $this->build_subject( $email, '' );
+
 		add_action( 'wp_mail_failed', array( $this, 'set_error' ), 10, 1 );
 
-		$result = wp_mail( $email, $this->settings['subject'], $message );
+		$result = wp_mail( $email, $subject, $message );
 
 		remove_action( 'wp_mail_failed', array( $this, 'set_error' ), 10 );
 
