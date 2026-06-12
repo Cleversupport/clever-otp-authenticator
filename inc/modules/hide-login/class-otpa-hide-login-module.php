@@ -214,9 +214,8 @@ class Otpa_Hide_Login_Module {
 
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$request     = wp_parse_url( $request_uri );
-		$path        = isset( $request['path'] ) ? untrailingslashit( $request['path'] ) : '';
 
-		if ( ( false !== strpos( $request_uri, 'wp-login.php' ) || $path === untrailingslashit( site_url( 'wp-login', 'relative' ) ) ) && ! is_admin() ) {
+		if ( self::is_wp_login_request( $request ) ) {
 			self::$wp_login_php      = true;
 			$_SERVER['REQUEST_URI'] = self::user_trailingslashit( '/' . str_repeat( '-/', 10 ) );
 			$pagenow                = 'index.php';
@@ -502,6 +501,30 @@ class Otpa_Hide_Login_Module {
 		$path = isset( $request['path'] ) ? untrailingslashit( $request['path'] ) : '';
 
 		return untrailingslashit( home_url( $slug, 'relative' ) ) === $path || ( ! get_option( 'permalink_structure' ) && isset( $_GET[ $slug ] ) && empty( $_GET[ $slug ] ) );
+	}
+
+	/**
+	 * Determine whether the current request directly targets wp-login.php.
+	 *
+	 * @param array|false $request Parsed request URL.
+	 * @return bool
+	 */
+	protected static function is_wp_login_request( $request ) {
+		global $pagenow;
+
+		if ( 'wp-login.php' === $pagenow ) {
+			return true;
+		}
+
+		if ( ! is_array( $request ) || empty( $request['path'] ) ) {
+			return false;
+		}
+
+		$path            = untrailingslashit( rawurldecode( $request['path'] ) );
+		$wp_login_path   = untrailingslashit( site_url( 'wp-login.php', 'relative' ) );
+		$wp_login_legacy = untrailingslashit( site_url( 'wp-login', 'relative' ) );
+
+		return $wp_login_path === $path || $wp_login_legacy === $path || 'wp-login.php' === basename( $path );
 	}
 
 	/**
