@@ -15,6 +15,7 @@ class Otpa_Passwordless {
 			add_action( 'otpa_page_passwordless_login', array( $this, 'login_page' ), 10, 0 );
 			add_action( 'login_footer', array( $this, 'auth_link' ), 10, 0 );
 			add_action( 'login_enqueue_scripts', array( $this, 'add_login_scripts' ), 99, 1 );
+			add_shortcode( 'otpa_passwordless_login', array( $this, 'passwordless_login_shortcode' ) );
 
 			add_filter( 'otpa_page_endpoints', array( $this, 'add_page_endpoint' ), 10, 1 );
 			add_filter( 'nonce_user_logged_out', array( $this, 'noncefield_from_ip' ), 10, 2 );
@@ -85,6 +86,29 @@ class Otpa_Passwordless {
 		}
 
 		return ( $output ) ? $html : false;
+	}
+
+
+	public function passwordless_login_shortcode( $attrs = array(), $content = '' ) {
+
+		if ( is_user_logged_in() ) {
+			return '';
+		}
+
+		$attrs = shortcode_atts(
+			array(
+				'class' => '',
+			),
+			$attrs,
+			'otpa_passwordless_login'
+		);
+		$vars  = $this->set_otp_form_vars( array() );
+
+		if ( ! empty( $attrs['class'] ) ) {
+			$vars['otp_wrapper_class'] = sanitize_html_class( $attrs['class'] );
+		}
+
+		return $this->otpa->render_otp_form( $vars, false );
 	}
 
 	public function set_otp_form_vars( $vars ) {

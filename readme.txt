@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.8
+Stable tag: 1.0.9
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,10 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.9 =
+* Add the `[otpa_passwordless_login]` shortcode so the existing Passwordless Authentication form can be embedded in WordPress and Elementor pages.
+* Reuse the shared OTP form renderer for the passwordless route and shortcode without adding another login process.
 
 = 1.0.8 =
 * Change Hide Login blocking to redirect direct wp-login.php and logged-out wp-admin requests to the site home page while keeping the public login slug redirecting to the passwordless login page.
