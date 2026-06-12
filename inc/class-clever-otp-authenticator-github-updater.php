@@ -16,8 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - WordPress asks this class for plugin update data in the admin area.
  * - The updater checks the latest GitHub Release for this repository.
  * - The GitHub release version/tag must be higher than the plugin header Version.
- * - The release ZIP must contain/install into the correct WordPress plugin folder:
- *   clever-otp-authenticator, so the plugin file remains clever-otp-authenticator/clever-otp-authenticator.php.
+ * - The release ZIP asset must be named clever-otp-authenticator-main.zip and
+ *   contain the top-level clever-otp-authenticator-main folder, so the plugin
+ *   file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
  *   clever_otp_authenticator_github_token option from Settings > OTP Authenticator > Updates.
  */
@@ -40,8 +41,14 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/** Optional wp-config.php constant containing a GitHub token. */
 	const TOKEN_CONSTANT = 'CLEVER_OTP_AUTHENTICATOR_GITHUB_TOKEN';
 
-	/** WordPress.org-style plugin slug. */
-	const PLUGIN_SLUG = 'clever-otp-authenticator';
+	/** WordPress.org-style plugin slug and package folder. */
+	const PLUGIN_SLUG = 'clever-otp-authenticator-main';
+
+	/** Expected installed plugin basename. */
+	const PLUGIN_BASENAME = 'clever-otp-authenticator-main/clever-otp-authenticator.php';
+
+	/** Expected GitHub release ZIP asset filename. */
+	const PACKAGE_FILENAME = 'clever-otp-authenticator-main.zip';
 
 	/** Settings tab slug. */
 	const SETTINGS_TAB = 'updates';
@@ -86,7 +93,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	 */
 	public function __construct( $plugin_file ) {
 		$this->plugin_file     = $plugin_file;
-		$this->plugin_basename = plugin_basename( $plugin_file );
+		$this->plugin_basename = self::PLUGIN_BASENAME;
 		$this->current_version = $this->get_current_version();
 	}
 
@@ -405,7 +412,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		}
 
 		$url      = remove_query_arg( self::PRIVATE_PACKAGE_MARKER, $package );
-		$tmp_file = wp_tempnam( self::PLUGIN_SLUG . '.zip' );
+		$tmp_file = wp_tempnam( self::PACKAGE_FILENAME );
 
 		if ( ! $tmp_file ) {
 			return new WP_Error( 'clever_otp_authenticator_temp_file', __( 'Could not create a temporary file for the plugin update.', 'otpa' ) );
@@ -445,11 +452,10 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 
 	/**
-	 * Ensure the extracted update installs into the clever-otp-authenticator folder.
+	 * Ensure the extracted update installs into the clever-otp-authenticator-main folder.
 	 *
-	 * GitHub source ZIPs extract into repository-generated folder names. WordPress
-	 * plugin updates need the final folder to match the plugin slug so the main
-	 * plugin file remains clever-otp-authenticator/clever-otp-authenticator.php.
+	 * WordPress plugin updates need the final folder to match the package slug so
+	 * the main plugin file remains clever-otp-authenticator-main/clever-otp-authenticator.php.
 	 *
 	 * @param string      $source        Path to the extracted package source.
 	 * @param string      $remote_source Path to the temporary upgrade directory.
@@ -591,9 +597,8 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	/**
 	 * Get the best package URL from a GitHub release.
 	 *
-	 * A release asset named for the plugin slug is preferred because the ZIP must
-	 * install into clever-otp-authenticator/clever-otp-authenticator.php. GitHub source archives
-	 * are used as a fallback only when no matching release asset exists.
+	 * The release asset must be named clever-otp-authenticator-main.zip because
+	 * the ZIP must install into clever-otp-authenticator-main/clever-otp-authenticator.php.
 	 *
 	 * @param array $release GitHub release data.
 	 * @return string
@@ -609,16 +614,12 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 				$asset_name = strtolower( $asset['name'] );
 
-				if ( self::PLUGIN_SLUG . '.zip' === $asset_name ) {
+				if ( self::PACKAGE_FILENAME === $asset_name ) {
 					$package = ! empty( $asset['url'] ) && '' !== $this->get_token() ? $asset['url'] : $asset['browser_download_url'];
 					$package = esc_url_raw( $package );
 					break;
 				}
 			}
-		}
-
-		if ( '' === $package && ! empty( $release['zipball_url'] ) ) {
-			$package = esc_url_raw( $release['zipball_url'] );
 		}
 
 		if ( '' !== $package && '' !== $this->get_token() ) {
