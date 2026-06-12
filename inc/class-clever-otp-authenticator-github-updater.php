@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - The updater checks the latest GitHub Release for this repository.
  * - The GitHub release version/tag must be higher than the plugin header Version.
  * - The release ZIP must contain/install into the correct WordPress plugin folder:
- *   otp-authenticator, so the plugin file remains otp-authenticator/otp-authenticator.php.
+ *   clever-otp-authenticator, so the plugin file remains clever-otp-authenticator/clever-otp-authenticator.php.
  * - Private repositories are supported by saving a GitHub token in the
  *   clever_otp_authenticator_github_token option from Settings > OTP Authenticator > Updates.
  */
@@ -41,7 +41,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	const TOKEN_CONSTANT = 'CLEVER_OTP_AUTHENTICATOR_GITHUB_TOKEN';
 
 	/** WordPress.org-style plugin slug. */
-	const PLUGIN_SLUG = 'otp-authenticator';
+	const PLUGIN_SLUG = 'clever-otp-authenticator';
 
 	/** Settings tab slug. */
 	const SETTINGS_TAB = 'updates';
@@ -445,11 +445,11 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 
 	/**
-	 * Ensure the extracted update installs into the otp-authenticator folder.
+	 * Ensure the extracted update installs into the clever-otp-authenticator folder.
 	 *
 	 * GitHub source ZIPs extract into repository-generated folder names. WordPress
 	 * plugin updates need the final folder to match the plugin slug so the main
-	 * plugin file remains otp-authenticator/otp-authenticator.php.
+	 * plugin file remains clever-otp-authenticator/clever-otp-authenticator.php.
 	 *
 	 * @param string      $source        Path to the extracted package source.
 	 * @param string      $remote_source Path to the temporary upgrade directory.
@@ -592,7 +592,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	 * Get the best package URL from a GitHub release.
 	 *
 	 * A release asset named for the plugin slug is preferred because the ZIP must
-	 * install into otp-authenticator/otp-authenticator.php. GitHub source archives
+	 * install into clever-otp-authenticator/clever-otp-authenticator.php. GitHub source archives
 	 * are used as a fallback only when no matching release asset exists.
 	 *
 	 * @param array $release GitHub release data.
@@ -609,7 +609,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 
 				$asset_name = strtolower( $asset['name'] );
 
-				if ( false !== strpos( $asset_name, self::PLUGIN_SLUG ) && '.zip' === substr( $asset_name, -4 ) ) {
+				if ( self::PLUGIN_SLUG . '.zip' === $asset_name ) {
 					$package = ! empty( $asset['url'] ) && '' !== $this->get_token() ? $asset['url'] : $asset['browser_download_url'];
 					$package = esc_url_raw( $package );
 					break;

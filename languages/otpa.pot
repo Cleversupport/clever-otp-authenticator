@@ -1442,7 +1442,7 @@ msgid ""
 msgstr ""
 
 #. URI of the plugin
-msgid "https://github.com/froger-me/otp-authenticator"
+msgid "https://github.com/Cleversupport/clever-otp-authenticator"
 msgstr ""
 
 #. Author of the plugin

@@ -1,4 +1,4 @@
-# OTP Authenticator - One-Time Password Authentication for WordPress
+# Clever OTP Authenticator - One-Time Password Authentication for WordPress
 
 * [General Description](#user-content-general-description)
     * [Overview](#user-content-overview)
@@ -23,8 +23,8 @@ This plugin adds the following major features to WordPress:
 * **Synchronize OTP identifiers with existing data:** wish to use Twilio SMS, but already have a phone number field saved in database? Perhaps with the "Billing Phone" in WooCommerce? Use this field by indicating its user meta key in the gateway settings (Note: duplicate identifiers will require users to choose a different one on update).
 * **Simple yet customizable appearance:** forms used to request OTP Verification Codes use a neutral dedicated style compatible with most themes, with customizable logo and call-to-action colors.
 * **Activity Logs:** when enabled, administrators can follow the activity of the enabled gateway. Critical messages regarding gateway malfunction are always logged.
-* **Customizable for developers:** developers can add their own gateways or add custom One-Time Password modes using action and filter hooks, and more - see the [developers documentation](https://github.com/froger-me/otp-authenticator).
-* **Integration-friendly:** specific integration with Ultimate Member and WooCommerce is included by default ; developers can easily plug into OTP Authenticator with a multitude of functions, filter hooks and action hooks - see the [developers documentation](https://github.com/froger-me/otp-authenticator) - contributions to integrations are welcome.
+* **Customizable for developers:** developers can add their own gateways or add custom One-Time Password modes using action and filter hooks, and more - see the [developers documentation](https://github.com/Cleversupport/clever-otp-authenticator).
+* **Integration-friendly:** specific integration with Ultimate Member and WooCommerce is included by default ; developers can easily plug into OTP Authenticator with a multitude of functions, filter hooks and action hooks - see the [developers documentation](https://github.com/Cleversupport/clever-otp-authenticator) - contributions to integrations are welcome.
 * **Unlimited features:** there are no premium version feature restrictions shenanigans - OTP Authenticator is fully-featured right out of the box.
 
 ___
