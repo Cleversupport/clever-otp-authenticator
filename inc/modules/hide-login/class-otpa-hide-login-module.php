@@ -37,16 +37,6 @@ class Otpa_Hide_Login_Module {
 	/** Fixed passwordless login path for the public login slug. */
 	const PASSWORDLESS_LOGIN_PATH = '/otpa/passwordless-login/';
 
-	/** Front-end slug used to trigger the site's real 404 template. */
-	const FRONTEND_404_SLUG = 'otpa-hidden-login-404';
-
-	/**
-	 * Whether the current request originally targeted wp-login.php.
-	 *
-	 * @var bool
-	 */
-	protected static $wp_login_php = false;
-
 	/**
 	 * Register module hooks.
 	 *
@@ -192,7 +182,7 @@ class Otpa_Hide_Login_Module {
 								<code><?php echo esc_html( trailingslashit( home_url() ) ); ?></code>
 								<input name="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" id="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( $redirect_slug ); ?>">
 								<p class="description">
-									<?php esc_html_e( 'Legacy compatibility setting. By default, blocked login and admin requests use the site\'s real 404 handling so theme and Elementor Pro 404 templates can render.', 'otpa' ); ?>
+									<?php esc_html_e( 'Legacy compatibility setting. Blocked login and logged-out admin requests now redirect to the site home page.', 'otpa' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -210,16 +200,17 @@ class Otpa_Hide_Login_Module {
 	 * @return void
 	 */
 	public static function handle_plugins_loaded_request() {
-		global $pagenow;
-
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$request     = wp_parse_url( $request_uri );
 
 		if ( self::is_wp_login_request( $request ) ) {
-			self::$wp_login_php      = true;
-			$_SERVER['REQUEST_URI'] = self::user_trailingslashit( '/' . str_repeat( '-/', 10 ) );
-			$pagenow                = 'index.php';
-			return;
+			wp_safe_redirect( home_url( '/' ) );
+			exit;
+		}
+
+		if ( is_admin() && ! is_user_logged_in() && ! wp_doing_ajax() ) {
+			wp_safe_redirect( home_url( '/' ) );
+			exit;
 		}
 
 		if ( self::request_matches_login_slug( $request ) ) {
@@ -237,7 +228,7 @@ class Otpa_Hide_Login_Module {
 		global $pagenow;
 
 		if ( is_admin() && ! is_user_logged_in() && ! wp_doing_ajax() ) {
-			wp_safe_redirect( self::blocked_admin_redirect_url() );
+			wp_safe_redirect( home_url( '/' ) );
 			exit;
 		}
 
@@ -248,10 +239,6 @@ class Otpa_Hide_Login_Module {
 		if ( 'wp-login.php' === $pagenow && $path !== self::user_trailingslashit( $path ) && get_option( 'permalink_structure' ) ) {
 			wp_safe_redirect( self::user_trailingslashit( self::new_login_url() ) . ( ! empty( $_SERVER['QUERY_STRING'] ) ? '?' . wp_unslash( $_SERVER['QUERY_STRING'] ) : '' ) );
 			exit;
-		}
-
-		if ( self::$wp_login_php ) {
-			add_action( 'template_redirect', array( __CLASS__, 'load_404_template' ), 0 );
 		}
 
 	}
@@ -361,30 +348,6 @@ class Otpa_Hide_Login_Module {
 	 */
 	public static function passwordless_login_url() {
 		return home_url( self::PASSWORDLESS_LOGIN_PATH );
-	}
-
-	/**
-	 * Get the front-end URL used to trigger a real WordPress 404 response.
-	 *
-	 * @return string
-	 */
-	protected static function frontend_404_url() {
-		return self::user_trailingslashit( home_url( '/' . self::FRONTEND_404_SLUG ) );
-	}
-
-	/**
-	 * Get the redirect URL for blocked logged-out wp-admin requests.
-	 *
-	 * @return string
-	 */
-	protected static function blocked_admin_redirect_url() {
-		$stored_slug = get_option( self::OPTION_REDIRECT_SLUG, self::DEFAULT_REDIRECT_SLUG );
-
-		if ( self::DEFAULT_REDIRECT_SLUG !== self::sanitize_redirect_slug( $stored_slug ) ) {
-			return self::new_redirect_url();
-		}
-
-		return self::frontend_404_url();
 	}
 
 	/**
@@ -525,37 +488,6 @@ class Otpa_Hide_Login_Module {
 		$wp_login_legacy = untrailingslashit( site_url( 'wp-login', 'relative' ) );
 
 		return $wp_login_path === $path || $wp_login_legacy === $path || 'wp-login.php' === basename( $path );
-	}
-
-	/**
-	 * Load the theme 404 template for blocked wp-login.php requests.
-	 *
-	 * @return void
-	 */
-	public static function load_404_template() {
-		global $wp_query;
-
-		status_header( 404 );
-		nocache_headers();
-
-		if ( $wp_query ) {
-			$wp_query->set_404();
-		}
-
-		$template = get_404_template();
-		$template = $template ? apply_filters( 'template_include', $template ) : '';
-
-		if ( ! $template ) {
-			$template = get_index_template();
-		}
-
-		if ( $template ) {
-			include $template;
-		} else {
-			echo '404'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		}
-
-		exit;
 	}
 
 	/**
