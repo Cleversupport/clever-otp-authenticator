@@ -25,6 +25,9 @@ class Otpa_Hide_Login_Module {
 	/** Redirect slug option name preserved from WPS Hide Login. */
 	const OPTION_REDIRECT_SLUG = 'whl_redirect_admin';
 
+	/** Enable/disable option name for the internal Hide Login module. */
+	const OPTION_ENABLED = 'otpa_hide_login_enabled';
+
 	/** Default login slug. */
 	const DEFAULT_LOGIN_SLUG = 'login';
 
@@ -44,6 +47,12 @@ class Otpa_Hide_Login_Module {
 	 * @return void
 	 */
 	public static function init() {
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+			add_action( 'otpa_after_main_tab_settings', array( __CLASS__, 'render_settings_tab_link' ), 20, 1 );
+			add_action( 'otpa_after_main_settings', array( __CLASS__, 'render_settings_tab' ), 20, 1 );
+		}
+
 		if ( self::standalone_plugin_active() ) {
 			if ( is_admin() ) {
 				add_action( 'admin_notices', array( __CLASS__, 'render_conflict_notice' ) );
@@ -52,10 +61,8 @@ class Otpa_Hide_Login_Module {
 			return;
 		}
 
-		if ( is_admin() ) {
-			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
-			add_action( 'otpa_after_main_tab_settings', array( __CLASS__, 'render_settings_tab_link' ), 20, 1 );
-			add_action( 'otpa_after_main_settings', array( __CLASS__, 'render_settings_tab' ), 20, 1 );
+		if ( ! self::is_enabled() ) {
+			return;
 		}
 
 		self::handle_plugins_loaded_request();
@@ -74,6 +81,15 @@ class Otpa_Hide_Login_Module {
 	 * @return void
 	 */
 	public static function register_settings() {
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::OPTION_ENABLED,
+			array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_enabled' ),
+				'default'           => '0',
+			)
+		);
+
 		register_setting(
 			self::SETTINGS_GROUP,
 			self::OPTION_LOGIN_SLUG,
@@ -118,6 +134,7 @@ class Otpa_Hide_Login_Module {
 			return;
 		}
 
+		$enabled       = self::is_enabled();
 		$login_slug    = self::new_login_slug();
 		$redirect_slug = self::new_redirect_slug();
 		?>
@@ -126,6 +143,21 @@ class Otpa_Hide_Login_Module {
 				<form method="post" action="options.php">
 					<?php settings_fields( self::SETTINGS_GROUP ); ?>
 					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row">
+								<?php esc_html_e( 'Enable Hide Login', 'otpa' ); ?>
+							</th>
+							<td>
+								<input name="<?php echo esc_attr( self::OPTION_ENABLED ); ?>" type="hidden" value="0">
+								<label for="<?php echo esc_attr( self::OPTION_ENABLED ); ?>">
+									<input name="<?php echo esc_attr( self::OPTION_ENABLED ); ?>" id="<?php echo esc_attr( self::OPTION_ENABLED ); ?>" type="checkbox" value="1" <?php checked( $enabled ); ?>>
+									<?php esc_html_e( 'Enable custom login URL protection.', 'otpa' ); ?>
+								</label>
+								<p class="description">
+									<?php esc_html_e( 'When disabled, this module leaves wp-login.php and wp-admin behavior unchanged.', 'otpa' ); ?>
+								</p>
+							</td>
+						</tr>
 						<tr>
 							<th scope="row">
 								<label for="<?php echo esc_attr( self::OPTION_LOGIN_SLUG ); ?>">
@@ -352,6 +384,25 @@ class Otpa_Hide_Login_Module {
 	}
 
 	/**
+	 * Determine whether the internal Hide Login module is enabled.
+	 *
+	 * @return bool
+	 */
+	public static function is_enabled() {
+		return '1' === get_option( self::OPTION_ENABLED, '0' );
+	}
+
+	/**
+	 * Sanitize the Hide Login enable setting.
+	 *
+	 * @param mixed $enabled Submitted enable value.
+	 * @return string
+	 */
+	public static function sanitize_enabled( $enabled ) {
+		return empty( $enabled ) ? '0' : '1';
+	}
+
+	/**
 	 * Sanitize the login slug.
 	 *
 	 * @param string $slug Login slug.
@@ -393,7 +444,11 @@ class Otpa_Hide_Login_Module {
 	 * @return string
 	 */
 	protected static function user_trailingslashit( $string ) {
-		return use_trailing_slashes() ? trailingslashit( $string ) : untrailingslashit( $string );
+		if ( function_exists( 'user_trailingslashit' ) ) {
+			return user_trailingslashit( $string );
+		}
+
+		return trailingslashit( $string );
 	}
 
 	/**
