@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -83,8 +83,10 @@ Help is provided without compensation for general enquiries and bug fixes only: 
 
 == Changelog ==
 
-= 1.0.5 =
-* Update Hide Login so the public login slug redirects to OTP Authenticator passwordless login and blocked wp-login/admin access uses real WordPress 404 handling for theme and Elementor Pro templates.
+= 1.0.6 =
+* Add manual update cache refresh support for GitHub-backed plugin updates.
+* Prefer the WordPress-ready `clever-otp-authenticator-main.zip` GitHub Release asset for plugin updates, with `zipball_url` retained as a fallback.
+* Build and upload the WordPress-ready release package automatically when a GitHub Release is published.
 
 = 1.0.4 =
 * Hotfix: keep Hide Login disabled by default and avoid calling unavailable trailing-slash helpers.
