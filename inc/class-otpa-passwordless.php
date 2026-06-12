@@ -97,12 +97,17 @@ class Otpa_Passwordless {
 
 		$attrs = shortcode_atts(
 			array(
-				'class' => '',
+				'class'       => '',
+				'redirect_to' => '',
 			),
 			$attrs,
 			'otpa_passwordless_login'
 		);
 		$vars  = $this->set_otp_form_vars( array() );
+
+		if ( ! empty( $attrs['redirect_to'] ) ) {
+			$vars['otp_redirect_to'] = $this->sanitize_redirect_to( $attrs['redirect_to'] );
+		}
 
 		if ( ! empty( $attrs['class'] ) ) {
 			$vars['otp_wrapper_class'] = sanitize_html_class( $attrs['class'] );
@@ -160,7 +165,7 @@ class Otpa_Passwordless {
 			do_action( 'wp_login', $user->user_login, $user );
 			wp_set_auth_cookie( $user->ID );
 
-			$redirect              = isset( $payload['redirect'] ) ? filter_var( $payload['redirect'], FILTER_VALIDATE_URL ) : false;
+			$redirect              = isset( $payload['redirect'] ) ? $this->sanitize_redirect_to( $payload['redirect'] ) : false;
 			$redirect_to           = ( $redirect ) ? $redirect : home_url();
 			$requested_redirect_to = $redirect;
 			$result['message']     = __( 'Welcome!', 'otpa' ) . '<br/>' . __( 'Redirecting...', 'otpa' );
@@ -180,6 +185,17 @@ class Otpa_Passwordless {
 
 	protected function get_otp_type() {
 		return str_replace( 'otpa_', '', strtolower( get_class() ) );
+	}
+
+	protected function sanitize_redirect_to( $redirect_to ) {
+		if ( empty( $redirect_to ) ) {
+			return '';
+		}
+
+		$redirect_to = sanitize_text_field( wp_unslash( $redirect_to ) );
+		$redirect_to = wp_validate_redirect( $redirect_to, '' );
+
+		return $redirect_to ? $redirect_to : '';
 	}
 
 	protected function get_back_markup() {
