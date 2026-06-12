@@ -34,6 +34,12 @@ class Otpa_Hide_Login_Module {
 	/** Default redirect slug. */
 	const DEFAULT_REDIRECT_SLUG = '404';
 
+	/** Fixed passwordless login path for the public login slug. */
+	const PASSWORDLESS_LOGIN_PATH = '/otpa/passwordless-login/';
+
+	/** Front-end slug used to trigger the site's real 404 template. */
+	const FRONTEND_404_SLUG = 'otpa-hidden-login-404';
+
 	/**
 	 * Whether the current request originally targeted wp-login.php.
 	 *
@@ -168,7 +174,7 @@ class Otpa_Hide_Login_Module {
 								<code><?php echo esc_html( trailingslashit( home_url() ) ); ?></code>
 								<input name="<?php echo esc_attr( self::OPTION_LOGIN_SLUG ); ?>" id="<?php echo esc_attr( self::OPTION_LOGIN_SLUG ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( $login_slug ); ?>">
 								<p class="description">
-									<?php esc_html_e( 'WordPress login URLs will use this slug instead of wp-login.php. Bookmark the resulting URL before saving.', 'otpa' ); ?>
+									<?php esc_html_e( 'This public short login URL redirects to the OTP Authenticator passwordless login page instead of loading wp-login.php.', 'otpa' ); ?>
 								</p>
 								<p class="description">
 									<?php esc_html_e( 'Current login URL:', 'otpa' ); ?>
@@ -186,7 +192,7 @@ class Otpa_Hide_Login_Module {
 								<code><?php echo esc_html( trailingslashit( home_url() ) ); ?></code>
 								<input name="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" id="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( $redirect_slug ); ?>">
 								<p class="description">
-									<?php esc_html_e( 'Logged-out wp-admin requests are redirected to this slug.', 'otpa' ); ?>
+									<?php esc_html_e( 'Legacy compatibility setting. By default, blocked login and admin requests use the site\'s real 404 handling so theme and Elementor Pro 404 templates can render.', 'otpa' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -218,7 +224,8 @@ class Otpa_Hide_Login_Module {
 		}
 
 		if ( self::request_matches_login_slug( $request ) ) {
-			$pagenow = 'wp-login.php';
+			wp_safe_redirect( self::passwordless_login_url() );
+			exit;
 		}
 	}
 
@@ -231,7 +238,7 @@ class Otpa_Hide_Login_Module {
 		global $pagenow;
 
 		if ( is_admin() && ! is_user_logged_in() && ! wp_doing_ajax() ) {
-			wp_safe_redirect( self::new_redirect_url() );
+			wp_safe_redirect( self::blocked_admin_redirect_url() );
 			exit;
 		}
 
@@ -245,14 +252,9 @@ class Otpa_Hide_Login_Module {
 		}
 
 		if ( self::$wp_login_php ) {
-			self::load_404_template();
+			add_action( 'template_redirect', array( __CLASS__, 'load_404_template' ), 0 );
 		}
 
-		if ( 'wp-login.php' === $pagenow ) {
-			global $error, $interim_login, $action, $user_login;
-			require_once ABSPATH . 'wp-login.php';
-			exit;
-		}
 	}
 
 	/**
@@ -351,6 +353,39 @@ class Otpa_Hide_Login_Module {
 		}
 
 		return home_url( '/', $scheme ) . '?' . self::new_login_slug();
+	}
+
+	/**
+	 * Get the fixed OTP Authenticator passwordless login URL.
+	 *
+	 * @return string
+	 */
+	public static function passwordless_login_url() {
+		return home_url( self::PASSWORDLESS_LOGIN_PATH );
+	}
+
+	/**
+	 * Get the front-end URL used to trigger a real WordPress 404 response.
+	 *
+	 * @return string
+	 */
+	protected static function frontend_404_url() {
+		return self::user_trailingslashit( home_url( '/' . self::FRONTEND_404_SLUG ) );
+	}
+
+	/**
+	 * Get the redirect URL for blocked logged-out wp-admin requests.
+	 *
+	 * @return string
+	 */
+	protected static function blocked_admin_redirect_url() {
+		$stored_slug = get_option( self::OPTION_REDIRECT_SLUG, self::DEFAULT_REDIRECT_SLUG );
+
+		if ( self::DEFAULT_REDIRECT_SLUG !== self::sanitize_redirect_slug( $stored_slug ) ) {
+			return self::new_redirect_url();
+		}
+
+		return self::frontend_404_url();
 	}
 
 	/**
@@ -474,7 +509,7 @@ class Otpa_Hide_Login_Module {
 	 *
 	 * @return void
 	 */
-	protected static function load_404_template() {
+	public static function load_404_template() {
 		global $wp_query;
 
 		status_header( 404 );
@@ -485,6 +520,11 @@ class Otpa_Hide_Login_Module {
 		}
 
 		$template = get_404_template();
+		$template = $template ? apply_filters( 'template_include', $template ) : '';
+
+		if ( ! $template ) {
+			$template = get_index_template();
+		}
 
 		if ( $template ) {
 			include $template;
