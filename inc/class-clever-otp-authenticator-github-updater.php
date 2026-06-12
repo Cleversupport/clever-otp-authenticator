@@ -110,6 +110,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		add_action( 'upgrader_process_complete', array( $this, 'clear_cache' ), 10, 2 );
 
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_post_clever_otp_authenticator_clear_update_cache', array( $this, 'handle_clear_update_cache' ) );
 		add_action( 'otpa_after_main_tab_settings', array( $this, 'render_settings_tab_link' ), 20, 1 );
 		add_action( 'otpa_after_main_settings', array( $this, 'render_settings_tab' ), 20, 1 );
 		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_settings_link' ) );
@@ -179,6 +180,33 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
+	 * Clear the updater caches from the Updates settings tab.
+	 *
+	 * @return void
+	 */
+	public function handle_clear_update_cache() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to clear the update cache.', 'otpa' ) );
+		}
+
+		check_admin_referer( 'clever_otp_authenticator_clear_update_cache' );
+
+		$this->clear_cache();
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'                 => 'otpa',
+					'tab'                  => self::SETTINGS_TAB,
+					'update_cache_cleared' => '1',
+				),
+				admin_url( 'options-general.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
 	 * Render the Updates settings tab link.
 	 *
 	 * @param string $active_tab Active OTP Authenticator settings tab.
@@ -210,6 +238,14 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		$has_constant_token = $this->has_constant_token();
 		$has_saved_token    = '' !== trim( (string) get_option( self::TOKEN_OPTION, '' ) );
 		$has_token          = '' !== $this->get_token();
+
+		if ( isset( $_GET['update_cache_cleared'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['update_cache_cleared'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p><?php esc_html_e( 'Clever OTP Authenticator update cache cleared. WordPress will check for plugin updates again.', 'otpa' ); ?></p>
+			</div>
+			<?php
+		}
 		?>
 		<div class="stuffbox">
 			<div class="inside">
@@ -301,6 +337,18 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 				</table>
 
 				<?php submit_button( __( 'Save Update Settings', 'otpa' ) ); ?>
+			</form>
+
+			<hr>
+
+			<h3><?php esc_html_e( 'Update Cache', 'otpa' ); ?></h3>
+			<p>
+				<?php esc_html_e( 'If a new GitHub release is not appearing during development, clear the GitHub release cache and WordPress plugin update cache, then check the Plugins or Updates screen again.', 'otpa' ); ?>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="clever_otp_authenticator_clear_update_cache">
+				<?php wp_nonce_field( 'clever_otp_authenticator_clear_update_cache' ); ?>
+				<?php submit_button( __( 'Check for Updates Now', 'otpa' ), 'secondary', 'submit', false ); ?>
 			</form>
 		</div>
 	</div>
@@ -490,7 +538,7 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 	}
 
 	/**
-	 * Clear updater cache after plugin updates complete.
+	 * Clear updater caches after plugin updates complete.
 	 *
 	 * @param WP_Upgrader $upgrader Upgrader instance.
 	 * @param array       $options  Update options.
@@ -500,6 +548,11 @@ class Clever_OTP_Authenticator_GitHub_Updater {
 		unset( $upgrader, $options );
 
 		delete_site_transient( self::CACHE_KEY );
+		delete_site_transient( 'update_plugins' );
+
+		if ( function_exists( 'wp_clean_plugins_cache' ) ) {
+			wp_clean_plugins_cache( true );
+		}
 	}
 
 	/**
