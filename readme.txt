@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.13
+Stable tag: 1.0.14
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,9 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.14 =
+* Add OTP send code button background and text/icon color controls with a rounded 10px button style.
 
 = 1.0.13 =
 * Add `show_logo` support to the `[otpa_passwordless_login]` shortcode, hiding the logo by default for embedded forms while keeping the full passwordless page logo visible.

@@ -988,10 +988,35 @@ class Otpa {
 
 	protected function get_css() {
 		$debug                          = apply_filters( 'otpa_debug', (bool) ( constant( 'WP_DEBUG' ) ) );
-		$submit_button_background_color = Otpa_Style_Settings::get_option( 'submit_button_background_color' );
-		$submit_button_text_color       = Otpa_Style_Settings::get_option( 'submit_button_text_color' );
-		$link_text_color                = Otpa_Style_Settings::get_option( 'link_text_color' );
-		$styles                         = '
+		$submit_button_background_color           = Otpa_Style_Settings::get_option( 'submit_button_background_color' );
+		$submit_button_text_color                 = Otpa_Style_Settings::get_option( 'submit_button_text_color' );
+		$link_text_color                          = Otpa_Style_Settings::get_option( 'link_text_color' );
+		$send_code_button_background_color        = Otpa_Style_Settings::get_option( 'send_code_button_background_color' );
+		$send_code_button_background_hover_color  = Otpa_Style_Settings::get_option( 'send_code_button_background_hover_color' );
+		$send_code_button_text_color              = Otpa_Style_Settings::get_option( 'send_code_button_text_color' );
+		$send_code_button_text_hover_color        = Otpa_Style_Settings::get_option( 'send_code_button_text_hover_color' );
+		$send_code_button_background_color_rule   = $send_code_button_background_color ? 'background-color: ' . $send_code_button_background_color . ';' : '';
+		$send_code_button_background_hover_rule   = $send_code_button_background_hover_color ? 'background-color: ' . $send_code_button_background_hover_color . ';' : '';
+		$send_code_button_text_color_rule         = $send_code_button_text_color ? 'color: ' . $send_code_button_text_color . ';' : '';
+		$send_code_button_text_hover_color_rule   = $send_code_button_text_hover_color ? 'color: ' . $send_code_button_text_hover_color . ';' : '';
+		$send_code_button_background_hover_styles = $send_code_button_background_hover_rule ? '
+			#otpa_send_code:hover {
+				' . $send_code_button_background_hover_rule . '
+			}
+		' : '';
+		$send_code_button_text_color_styles       = $send_code_button_text_color_rule ? '
+			#otpa_send_code,
+			#otpa_send_code * {
+				' . $send_code_button_text_color_rule . '
+			}
+		' : '';
+		$send_code_button_text_hover_color_styles = $send_code_button_text_hover_color_rule ? '
+			#otpa_send_code:hover,
+			#otpa_send_code:hover * {
+				' . $send_code_button_text_hover_color_rule . '
+			}
+		' : '';
+		$styles                                   = '
 			.otpa-form button.submit {
 				background-color: ' . $submit_button_background_color . ';
 				color: ' . $submit_button_text_color . ';
@@ -1006,6 +1031,15 @@ class Otpa {
 			.otpa-form button.submit:disabled {
 				background-color: ' . otpa_adjust_color_brightness( $submit_button_background_color, -20 ) . ';
 			}
+
+			#otpa_send_code {
+				' . $send_code_button_background_color_rule . '
+				border-radius: 10px;
+			}
+
+			' . $send_code_button_background_hover_styles . '
+			' . $send_code_button_text_color_styles . '
+			' . $send_code_button_text_hover_color_styles . '
 
 			.otpa-form .message a {
 				color: ' . $link_text_color . ';
