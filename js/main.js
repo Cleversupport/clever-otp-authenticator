@@ -14,18 +14,24 @@ jQuery(document).ready(function($) {
 		});
 	}
 
+	var showOtpWrapper = function() {
+		$('.otpa-wrapper').fadeIn();
+	};
+
 	if ( '' !== $('#otpa_logo').data('otp_logo_url') ) {
 		var logo       = new Image(),
 			logoHolder = $('#otpa_logo');
 
 		logo.src = logoHolder.data('otp_logo_url');
 
-		$(logo).load(function() {
+		$(logo).on('load', function() {
 			logoHolder.css('background-image', 'url(' + $(this).attr('src') + ')');
-			$('.otpa-wrapper').fadeIn();
-		});
+			showOtpWrapper();
+		}).on('error', showOtpWrapper);
+
+		window.setTimeout(showOtpWrapper, 3000);
 	} else {
-		$('.otpa-wrapper').fadeIn();
+		showOtpWrapper();
 	}
 
 	window.requestOTPCodeEvent = new CustomEvent('requestOTPCode');
