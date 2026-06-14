@@ -312,6 +312,7 @@ class Otpa {
 		$default_vars = array(
 			'otp_widget'         => $this->get_otp_widget(),
 			'otp_logo_url'       => Otpa_Style_Settings::get_option( 'logo_url' ),
+			'otp_show_logo'      => true,
 			'otp_form_type'      => 'default',
 			'otp_form_title'     => __( 'Get a Verification Code', 'otpa' ),
 			'otp_footer_message' => $this->get_logout_markup(),

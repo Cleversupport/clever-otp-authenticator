@@ -99,11 +99,13 @@ class Otpa_Passwordless {
 			array(
 				'class'       => '',
 				'redirect_to' => '',
+				'show_logo'   => 'no',
 			),
 			$attrs,
 			'otpa_passwordless_login'
 		);
 		$vars  = $this->set_otp_form_vars( array() );
+		$vars['otp_show_logo'] = in_array( strtolower( trim( $attrs['show_logo'] ) ), array( 'yes', 'true', '1' ), true );
 
 		if ( ! empty( $attrs['redirect_to'] ) ) {
 			$vars['otp_redirect_to'] = $this->sanitize_redirect_to( $attrs['redirect_to'] );

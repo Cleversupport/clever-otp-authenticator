@@ -18,11 +18,13 @@ jQuery(document).ready(function($) {
 		$('.otpa-wrapper').fadeIn();
 	};
 
-	if ( '' !== $('#otpa_logo').data('otp_logo_url') ) {
-		var logo       = new Image(),
-			logoHolder = $('#otpa_logo');
+	var logoHolder = $('#otpa_logo'),
+		logoUrl    = logoHolder.length ? logoHolder.data('otp_logo_url') : '';
 
-		logo.src = logoHolder.data('otp_logo_url');
+	if (logoUrl) {
+		var logo = new Image();
+
+		logo.src = logoUrl;
 
 		$(logo).on('load', function() {
 			logoHolder.css('background-image', 'url(' + $(this).attr('src') + ')');
