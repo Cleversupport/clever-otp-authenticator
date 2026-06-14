@@ -35,6 +35,8 @@ body.otpa-page .otpa-inner {
 	display: flex;
 	justify-content: center;
 	width: 100%;
+	max-width: 100%;
+	min-width: 0;
 	padding: 24px 0;
 }
 
@@ -54,6 +56,34 @@ body.otpa-page .otpa-wrapper,
 .otpa-shortcode .otpa-wrapper {
 	position: static;
 	transform: none;
+}
+
+.otpa-shortcode .otpa-wrapper,
+.otpa-shortcode .otpa-form,
+.otpa-shortcode form,
+.otpa-shortcode .otpa-widget {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.otpa-shortcode .otpa-wrapper {
+	margin: 0 auto;
+}
+
+.otpa-shortcode .otpa-form {
+	padding: 32px 24px;
+}
+
+.otpa-shortcode .otpa-form input,
+.otpa-shortcode .otpa-form button,
+.otpa-shortcode .otpa-form .message.footer {
+	max-width: 100%;
+	min-width: 0;
+}
+
+.otpa-shortcode .otpa-form .message.footer {
+	overflow-wrap: anywhere;
 }
 
 .otpa-logo {
@@ -188,6 +218,21 @@ body.otpa-page .otpa-wrapper,
 	background-color: #ff3b30;
 }
 
+@media screen and (max-width: 480px) {
+	.otpa-shortcode {
+		padding: 12px 0;
+	}
+
+	.otpa-shortcode .otpa-form {
+		padding: 30px 20px;
+	}
+
+	.otpa-shortcode .otpa-wrapper h1 {
+		font-size: 20px;
+		margin-bottom: 20px;
+	}
+}
+
 @media screen and (max-width: 375px) {
 	.otpa-wrapper {
 		max-width: 100%;
@@ -201,6 +246,10 @@ body.otpa-page .otpa-wrapper,
 	body.otpa-page .otpa-inner,
 	.otpa-shortcode {
 		padding: 0;
+	}
+
+	.otpa-shortcode .otpa-form {
+		padding: 28px 18px;
 	}
 
 	.otpa-form {

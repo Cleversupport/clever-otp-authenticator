@@ -5,7 +5,9 @@
 ?>
 <div class="otpa-inner<?php echo isset( $otp_wrapper_class ) && $otp_wrapper_class ? ' ' . esc_attr( $otp_wrapper_class ) : ''; ?>">
 	<div class="otpa-wrapper">
-		<div id="otpa_logo" class="otpa-logo" data-otp_logo_url="<?php echo esc_url( $otp_logo_url ); ?>"></div>
+		<?php if ( ! isset( $otp_show_logo ) || $otp_show_logo ) : ?>
+			<div id="otpa_logo" class="otpa-logo" data-otp_logo_url="<?php echo esc_url( $otp_logo_url ); ?>"></div>
+		<?php endif; ?>
 		<div id="otpa_otp_form" data-otp_form_type="<?php echo esc_attr( $otp_form_type ); ?>" data-handler="verify_otp_code" data-redirect_to="<?php echo isset( $otp_redirect_to ) ? esc_attr( $otp_redirect_to ) : ''; ?>" class="otpa-form">
 			<h1><?php echo esc_html( $otp_form_title ); ?></h1>
 			<?php do_action( 'otpa_before_otp_form', $otp_form_type ); ?>
