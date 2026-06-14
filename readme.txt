@@ -84,7 +84,7 @@ Help is provided without compensation for general enquiries and bug fixes only: 
 == Changelog ==
 
 = 1.0.15 =
-* Add Hide Login dashboard access restriction settings with dynamically selected allowed roles.
+* Add Hide Login dashboard access restriction settings with dynamically selected additional roles while always allowing administrators.
 
 = 1.0.14 =
 * Add OTP send code button background and text/icon color controls with a rounded 10px button style.
