@@ -204,6 +204,10 @@ class Otpa_Hide_Login_Module {
 		$request     = wp_parse_url( $request_uri );
 
 		if ( self::is_wp_login_request( $request ) ) {
+			if ( self::is_logged_in_logout_request( $request ) ) {
+				return;
+			}
+
 			wp_safe_redirect( home_url( '/' ) );
 			exit;
 		}
@@ -298,6 +302,12 @@ class Otpa_Hide_Login_Module {
 	 */
 	public static function filter_wp_login_php( $url, $scheme = null ) {
 		if ( false === strpos( $url, 'wp-login.php' ) ) {
+			return $url;
+		}
+
+		$parsed_url = wp_parse_url( $url );
+
+		if ( self::is_logged_in_logout_request( $parsed_url ) ) {
 			return $url;
 		}
 
@@ -488,6 +498,28 @@ class Otpa_Hide_Login_Module {
 		$wp_login_legacy = untrailingslashit( site_url( 'wp-login', 'relative' ) );
 
 		return $wp_login_path === $path || $wp_login_legacy === $path || 'wp-login.php' === basename( $path );
+	}
+
+	/**
+	 * Determine whether WordPress should handle the current logout request.
+	 *
+	 * @param array|false $request Parsed request URL.
+	 * @return bool
+	 */
+	protected static function is_logged_in_logout_request( $request ) {
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$query = array();
+
+		if ( is_array( $request ) && ! empty( $request['query'] ) ) {
+			wp_parse_str( $request['query'], $query );
+		} elseif ( isset( $_GET['action'] ) ) {
+			$query['action'] = wp_unslash( $_GET['action'] );
+		}
+
+		return isset( $query['action'] ) && 'logout' === sanitize_key( $query['action'] );
 	}
 
 	/**

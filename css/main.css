@@ -1,5 +1,5 @@
 body.otpa-page *,
-.otpa-inner * {
+body.otpa-page .otpa-inner * {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
@@ -19,6 +19,13 @@ body.otpa-page {
 	position: relative;
 	z-index: 1;
 	width: 100%;
+	box-sizing: border-box;
+}
+
+.otpa-inner *,
+.otpa-inner *::before,
+.otpa-inner *::after {
+	box-sizing: border-box;
 }
 
 body.otpa-page .otpa-inner {
@@ -30,6 +37,13 @@ body.otpa-page .otpa-inner {
 	z-index: 999999;
 	background: #eeeeee;
 	overflow-y: scroll;
+}
+
+.otpa-shortcode {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	padding: 24px 0;
 }
 
 .otpa-preview.otpa-page .otpa-inner {
@@ -49,6 +63,11 @@ body.otpa-page .otpa-wrapper {
 	top: 50px;
 	left: 50%;
 	transform: translate(-50%, 0);
+}
+
+.otpa-shortcode .otpa-wrapper {
+	position: static;
+	transform: none;
 }
 
 .otpa-logo {
@@ -98,7 +117,7 @@ body.otpa-page .otpa-wrapper {
 	line-height: 1.5;
 }
 
-[placeholder]:focus::-webkit-input-placeholder {
+.otpa-form [placeholder]:focus::-webkit-input-placeholder {
 	-webkit-transition: opacity 0.5s 0.5s ease;
 	transition: opacity 0.5s 0.5s ease;
 	opacity: 0;
@@ -134,8 +153,8 @@ body.otpa-page .otpa-wrapper {
 }
 
 .otpa-form button:disabled {
-		opacity: 0.5 !important;
-		cursor: not-allowed;
+	opacity: 0.5 !important;
+	cursor: not-allowed;
 }
 
 .otpa-form .message.result {
@@ -165,7 +184,7 @@ body.otpa-page .otpa-wrapper {
 }
 
 .otpa-validation-status.not-validated:before {
-		background-color: #ff3b30;
+	background-color: #ff3b30;
 }
 
 @media screen and (max-width: 375px) {
@@ -179,6 +198,7 @@ body.otpa-page .otpa-wrapper {
 
 	.otpa-form {
 		max-width: 100%;
+		min-width: 0;
 		top: initial;
 		bottom: initial;
 		transform: none;

@@ -109,9 +109,13 @@ class Otpa_Passwordless {
 			$vars['otp_redirect_to'] = $this->sanitize_redirect_to( $attrs['redirect_to'] );
 		}
 
+		$wrapper_classes = array( 'otpa-shortcode' );
+
 		if ( ! empty( $attrs['class'] ) ) {
-			$vars['otp_wrapper_class'] = sanitize_html_class( $attrs['class'] );
+			$wrapper_classes[] = sanitize_html_class( $attrs['class'] );
 		}
+
+		$vars['otp_wrapper_class'] = implode( ' ', array_filter( $wrapper_classes ) );
 
 		return $this->otpa->render_otp_form( $vars, false );
 	}
