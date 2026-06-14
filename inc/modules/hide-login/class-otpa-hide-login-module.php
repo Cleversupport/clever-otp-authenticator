@@ -59,6 +59,8 @@ class Otpa_Hide_Login_Module {
 			add_action( 'admin_init', array( __CLASS__, 'restrict_dashboard_access' ), 20 );
 		}
 
+		add_filter( 'show_admin_bar', array( __CLASS__, 'maybe_hide_admin_bar' ) );
+
 		if ( self::standalone_plugin_active() ) {
 			if ( is_admin() ) {
 				add_action( 'admin_notices', array( __CLASS__, 'render_conflict_notice' ) );
@@ -332,22 +334,45 @@ class Otpa_Hide_Login_Module {
 			return;
 		}
 
-		$user = wp_get_current_user();
-
-		if ( ! $user || ! $user->exists() ) {
-			return;
-		}
-
-		if ( in_array( 'administrator', (array) $user->roles, true ) || ( is_multisite() && is_super_admin( $user->ID ) ) ) {
-			return;
-		}
-
-		if ( array_intersect( self::allowed_dashboard_roles(), (array) $user->roles ) ) {
+		if ( self::current_user_can_access_dashboard() ) {
 			return;
 		}
 
 		wp_safe_redirect( home_url( '/' ) );
 		exit;
+	}
+
+	/**
+	 * Hide the front-end admin bar for logged-in users who cannot access wp-admin.
+	 *
+	 * @param bool $show_admin_bar Whether to show the admin bar.
+	 * @return bool
+	 */
+	public static function maybe_hide_admin_bar( $show_admin_bar ) {
+		if ( ! self::is_dashboard_access_restriction_enabled() || is_admin() || ! is_user_logged_in() ) {
+			return $show_admin_bar;
+		}
+
+		return self::current_user_can_access_dashboard() ? $show_admin_bar : false;
+	}
+
+	/**
+	 * Determine whether the current logged-in user can access the dashboard.
+	 *
+	 * @return bool
+	 */
+	protected static function current_user_can_access_dashboard() {
+		$user = wp_get_current_user();
+
+		if ( ! $user || ! $user->exists() ) {
+			return false;
+		}
+
+		if ( in_array( 'administrator', (array) $user->roles, true ) || ( is_multisite() && is_super_admin( $user->ID ) ) ) {
+			return true;
+		}
+
+		return (bool) array_intersect( self::allowed_dashboard_roles(), (array) $user->roles );
 	}
 
 	/**
