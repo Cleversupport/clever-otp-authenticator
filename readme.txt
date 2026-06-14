@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.15
+Stable tag: 1.0.16
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,12 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.16 =
+* Finalized dashboard access restriction settings in the Hide Login tab.
+* Administrators are always allowed and are not shown as a selectable role option.
+* Allowed dashboard roles now only list additional roles available on the current WordPress site.
+* Preserved AJAX, REST API, cron, admin-post.php, logout, shortcode, Hide Login, and updater behavior.
 
 = 1.0.15 =
 * Add Hide Login dashboard access restriction settings with dynamically selected additional roles while always allowing administrators.
