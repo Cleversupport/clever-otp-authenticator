@@ -28,6 +28,12 @@ class Otpa_Hide_Login_Module {
 	/** Enable/disable option name for the internal Hide Login module. */
 	const OPTION_ENABLED = 'otpa_hide_login_enabled';
 
+	/** Dashboard access restriction option name. */
+	const OPTION_RESTRICT_DASHBOARD_ACCESS = 'otpa_restrict_dashboard_access';
+
+	/** Allowed dashboard roles option name. */
+	const OPTION_ALLOWED_DASHBOARD_ROLES = 'otpa_allowed_dashboard_roles';
+
 	/** Default login slug. */
 	const DEFAULT_LOGIN_SLUG = 'login';
 
@@ -47,6 +53,10 @@ class Otpa_Hide_Login_Module {
 			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 			add_action( 'otpa_after_main_tab_settings', array( __CLASS__, 'render_settings_tab_link' ), 20, 1 );
 			add_action( 'otpa_after_main_settings', array( __CLASS__, 'render_settings_tab' ), 20, 1 );
+		}
+
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( __CLASS__, 'restrict_dashboard_access' ), 20 );
 		}
 
 		if ( self::standalone_plugin_active() ) {
@@ -103,6 +113,24 @@ class Otpa_Hide_Login_Module {
 				'default'           => self::DEFAULT_REDIRECT_SLUG,
 			)
 		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::OPTION_RESTRICT_DASHBOARD_ACCESS,
+			array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_enabled' ),
+				'default'           => '0',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::OPTION_ALLOWED_DASHBOARD_ROLES,
+			array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_allowed_dashboard_roles' ),
+				'default'           => array( 'administrator' ),
+			)
+		);
 	}
 
 	/**
@@ -130,9 +158,12 @@ class Otpa_Hide_Login_Module {
 			return;
 		}
 
-		$enabled       = self::is_enabled();
-		$login_slug    = self::new_login_slug();
-		$redirect_slug = self::new_redirect_slug();
+		$enabled                   = self::is_enabled();
+		$login_slug                = self::new_login_slug();
+		$redirect_slug             = self::new_redirect_slug();
+		$restrict_dashboard_access = self::is_dashboard_access_restriction_enabled();
+		$allowed_dashboard_roles   = self::allowed_dashboard_roles();
+		$editable_roles            = self::get_available_roles();
 		?>
 		<div class="stuffbox">
 			<div class="inside">
@@ -183,6 +214,34 @@ class Otpa_Hide_Login_Module {
 								<input name="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" id="<?php echo esc_attr( self::OPTION_REDIRECT_SLUG ); ?>" type="text" class="regular-text" value="<?php echo esc_attr( $redirect_slug ); ?>">
 								<p class="description">
 									<?php esc_html_e( 'Legacy compatibility setting. Blocked login and logged-out admin requests now redirect to the site home page.', 'otpa' ); ?>
+								</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<?php esc_html_e( 'Enable Dashboard Access Restriction', 'otpa' ); ?>
+							</th>
+							<td>
+								<input name="<?php echo esc_attr( self::OPTION_RESTRICT_DASHBOARD_ACCESS ); ?>" type="hidden" value="0">
+								<label for="<?php echo esc_attr( self::OPTION_RESTRICT_DASHBOARD_ACCESS ); ?>">
+									<input name="<?php echo esc_attr( self::OPTION_RESTRICT_DASHBOARD_ACCESS ); ?>" id="<?php echo esc_attr( self::OPTION_RESTRICT_DASHBOARD_ACCESS ); ?>" type="checkbox" value="1" <?php checked( $restrict_dashboard_access ); ?>>
+									<?php esc_html_e( 'Redirect logged-in users without an allowed role away from wp-admin.', 'otpa' ); ?>
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<?php esc_html_e( 'Allowed Dashboard Roles', 'otpa' ); ?>
+							</th>
+							<td>
+								<?php foreach ( $editable_roles as $role_key => $role ) : ?>
+									<label style="display:block;margin-bottom:4px;" for="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES . '_' . $role_key ); ?>">
+										<input name="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES ); ?>[]" id="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES . '_' . $role_key ); ?>" type="checkbox" value="<?php echo esc_attr( $role_key ); ?>" <?php checked( in_array( $role_key, $allowed_dashboard_roles, true ) ); ?>>
+										<?php echo esc_html( translate_user_role( $role['name'] ) ); ?>
+									</label>
+								<?php endforeach; ?>
+								<p class="description">
+									<?php esc_html_e( 'Administrators are always allowed, and super admins are always allowed on multisite, even if this setting is changed.', 'otpa' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -250,6 +309,44 @@ class Otpa_Hide_Login_Module {
 			exit;
 		}
 
+	}
+
+	/**
+	 * Redirect logged-in admin users who do not have an allowed dashboard role.
+	 *
+	 * @return void
+	 */
+	public static function restrict_dashboard_access() {
+		global $pagenow;
+
+		if ( ! self::is_dashboard_access_restriction_enabled() ) {
+			return;
+		}
+
+		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return;
+		}
+
+		if ( 'admin-post.php' === $pagenow || ! is_user_logged_in() ) {
+			return;
+		}
+
+		$user = wp_get_current_user();
+
+		if ( ! $user || ! $user->exists() ) {
+			return;
+		}
+
+		if ( in_array( 'administrator', (array) $user->roles, true ) || ( is_multisite() && is_super_admin( $user->ID ) ) ) {
+			return;
+		}
+
+		if ( array_intersect( self::allowed_dashboard_roles(), (array) $user->roles ) ) {
+			return;
+		}
+
+		wp_safe_redirect( home_url( '/' ) );
+		exit;
 	}
 
 	/**
@@ -405,6 +502,37 @@ class Otpa_Hide_Login_Module {
 	}
 
 	/**
+	 * Determine whether dashboard access restriction is enabled.
+	 *
+	 * @return bool
+	 */
+	public static function is_dashboard_access_restriction_enabled() {
+		return '1' === get_option( self::OPTION_RESTRICT_DASHBOARD_ACCESS, '0' );
+	}
+
+	/**
+	 * Get existing WordPress roles keyed by role slug.
+	 *
+	 * @return array
+	 */
+	public static function get_available_roles() {
+		$wp_roles = wp_roles();
+
+		return is_object( $wp_roles ) && is_array( $wp_roles->roles ) ? $wp_roles->roles : array();
+	}
+
+	/**
+	 * Get sanitized allowed dashboard roles.
+	 *
+	 * @return array
+	 */
+	public static function allowed_dashboard_roles() {
+		$roles = get_option( self::OPTION_ALLOWED_DASHBOARD_ROLES, array( 'administrator' ) );
+
+		return self::sanitize_allowed_dashboard_roles( $roles );
+	}
+
+	/**
 	 * Sanitize the Hide Login enable setting.
 	 *
 	 * @param mixed $enabled Submitted enable value.
@@ -412,6 +540,24 @@ class Otpa_Hide_Login_Module {
 	 */
 	public static function sanitize_enabled( $enabled ) {
 		return empty( $enabled ) ? '0' : '1';
+	}
+
+	/**
+	 * Sanitize dashboard role slugs against roles available on this site.
+	 *
+	 * @param mixed $roles Submitted role slugs.
+	 * @return array
+	 */
+	public static function sanitize_allowed_dashboard_roles( $roles ) {
+		if ( ! is_array( $roles ) ) {
+			$roles = empty( $roles ) ? array() : array( $roles );
+		}
+
+		$available_roles = array_keys( self::get_available_roles() );
+		$roles           = array_map( 'sanitize_key', wp_unslash( $roles ) );
+		$roles           = array_values( array_unique( array_intersect( $roles, $available_roles ) ) );
+
+		return $roles;
 	}
 
 	/**
