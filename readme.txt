@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.11
+Stable tag: 1.0.12
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,10 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.12 =
+* Fix Hide Login logout handling so `wp-login.php?action=logout` always reaches WordPress for nonce and session validation.
+* Restore the full passwordless login card spacing while keeping shortcode styles scoped for Elementor embeds.
 
 = 1.0.11 =
 * Fix Hide Login so logged-in `wp-login.php?action=logout` requests are allowed through while default login and logged-out admin requests remain blocked.
