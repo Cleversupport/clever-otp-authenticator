@@ -128,7 +128,7 @@ class Otpa_Hide_Login_Module {
 			self::OPTION_ALLOWED_DASHBOARD_ROLES,
 			array(
 				'sanitize_callback' => array( __CLASS__, 'sanitize_allowed_dashboard_roles' ),
-				'default'           => array( 'administrator' ),
+				'default'           => array(),
 			)
 		);
 	}
@@ -163,7 +163,7 @@ class Otpa_Hide_Login_Module {
 		$redirect_slug             = self::new_redirect_slug();
 		$restrict_dashboard_access = self::is_dashboard_access_restriction_enabled();
 		$allowed_dashboard_roles   = self::allowed_dashboard_roles();
-		$editable_roles            = self::get_available_roles();
+		$editable_roles            = self::get_selectable_dashboard_roles();
 		?>
 		<div class="stuffbox">
 			<div class="inside">
@@ -234,6 +234,7 @@ class Otpa_Hide_Login_Module {
 								<?php esc_html_e( 'Allowed Dashboard Roles', 'otpa' ); ?>
 							</th>
 							<td>
+								<input name="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES ); ?>[]" type="hidden" value="">
 								<?php foreach ( $editable_roles as $role_key => $role ) : ?>
 									<label style="display:block;margin-bottom:4px;" for="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES . '_' . $role_key ); ?>">
 										<input name="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES ); ?>[]" id="<?php echo esc_attr( self::OPTION_ALLOWED_DASHBOARD_ROLES . '_' . $role_key ); ?>" type="checkbox" value="<?php echo esc_attr( $role_key ); ?>" <?php checked( in_array( $role_key, $allowed_dashboard_roles, true ) ); ?>>
@@ -241,7 +242,7 @@ class Otpa_Hide_Login_Module {
 									</label>
 								<?php endforeach; ?>
 								<p class="description">
-									<?php esc_html_e( 'Administrators are always allowed, and super admins are always allowed on multisite, even if this setting is changed.', 'otpa' ); ?>
+									<?php esc_html_e( 'Administrators are always allowed. Select any additional roles that should be allowed to access the dashboard.', 'otpa' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -522,12 +523,25 @@ class Otpa_Hide_Login_Module {
 	}
 
 	/**
+	 * Get selectable dashboard roles, excluding administrators because they are always allowed.
+	 *
+	 * @return array
+	 */
+	public static function get_selectable_dashboard_roles() {
+		$roles = self::get_available_roles();
+
+		unset( $roles['administrator'] );
+
+		return $roles;
+	}
+
+	/**
 	 * Get sanitized allowed dashboard roles.
 	 *
 	 * @return array
 	 */
 	public static function allowed_dashboard_roles() {
-		$roles = get_option( self::OPTION_ALLOWED_DASHBOARD_ROLES, array( 'administrator' ) );
+		$roles = get_option( self::OPTION_ALLOWED_DASHBOARD_ROLES, array() );
 
 		return self::sanitize_allowed_dashboard_roles( $roles );
 	}
@@ -556,6 +570,7 @@ class Otpa_Hide_Login_Module {
 		$available_roles = array_keys( self::get_available_roles() );
 		$roles           = array_map( 'sanitize_key', wp_unslash( $roles ) );
 		$roles           = array_values( array_unique( array_intersect( $roles, $available_roles ) ) );
+		$roles           = array_values( array_diff( $roles, array( 'administrator' ) ) );
 
 		return $roles;
 	}
