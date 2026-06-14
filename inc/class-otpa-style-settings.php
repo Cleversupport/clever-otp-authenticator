@@ -63,6 +63,20 @@ class Otpa_Style_Settings {
 		$default  = self::get_default_settings();
 		$settings = array_merge( $default, $settings );
 
+		$color_settings = array(
+			'submit_button_background_color',
+			'submit_button_text_color',
+			'link_text_color',
+			'send_code_button_background_color',
+			'send_code_button_background_hover_color',
+			'send_code_button_text_color',
+			'send_code_button_text_hover_color',
+		);
+
+		foreach ( $color_settings as $setting_key ) {
+			$settings[ $setting_key ] = self::sanitize_hex_color_setting( $settings[ $setting_key ] );
+		}
+
 		if ( empty( $settings['submit_button_background_color'] ) ) {
 			$settings['submit_button_background_color'] = $default['submit_button_background_color'];
 		}
@@ -202,6 +216,43 @@ class Otpa_Style_Settings {
 					'script_dependencies' => array( 'wp-color-picker' ),
 					'help'                => __( 'Text color of the OTP Form submit button.', 'otpa' ),
 				),
+
+				array(
+					'id'                  => 'send_code_button_background_color',
+					'label'               => __( 'Send Code Button Background Color', 'otpa' ),
+					'type'                => 'color_picker',
+					'default'             => '',
+					'style_dependencies'  => array( 'wp-color-picker' ),
+					'script_dependencies' => array( 'wp-color-picker' ),
+					'help'                => __( 'Background color of the OTP Form send code button. Leave empty to use the current default style.', 'otpa' ),
+				),
+				array(
+					'id'                  => 'send_code_button_background_hover_color',
+					'label'               => __( 'Send Code Button Background Hover Color', 'otpa' ),
+					'type'                => 'color_picker',
+					'default'             => '',
+					'style_dependencies'  => array( 'wp-color-picker' ),
+					'script_dependencies' => array( 'wp-color-picker' ),
+					'help'                => __( 'Hover background color of the OTP Form send code button. Leave empty to use the current default style.', 'otpa' ),
+				),
+				array(
+					'id'                  => 'send_code_button_text_color',
+					'label'               => __( 'Send Code Button Text/Icon Color', 'otpa' ),
+					'type'                => 'color_picker',
+					'default'             => '',
+					'style_dependencies'  => array( 'wp-color-picker' ),
+					'script_dependencies' => array( 'wp-color-picker' ),
+					'help'                => __( 'Text and icon color of the OTP Form send code button. Leave empty to use the current default style.', 'otpa' ),
+				),
+				array(
+					'id'                  => 'send_code_button_text_hover_color',
+					'label'               => __( 'Send Code Button Text/Icon Hover Color', 'otpa' ),
+					'type'                => 'color_picker',
+					'default'             => '',
+					'style_dependencies'  => array( 'wp-color-picker' ),
+					'script_dependencies' => array( 'wp-color-picker' ),
+					'help'                => __( 'Hover text and icon color of the OTP Form send code button. Leave empty to use the current default style.', 'otpa' ),
+				),
 				array(
 					'id'                  => 'link_text_color',
 					'label'               => __( 'Links Text Color', 'otpa' ),
@@ -221,12 +272,32 @@ class Otpa_Style_Settings {
 	 * Protected methods
 	 *******************************************************************/
 
+
+	protected static function sanitize_hex_color_setting( $color ) {
+
+		if ( empty( $color ) ) {
+			return '';
+		}
+
+		if ( function_exists( 'sanitize_hex_color' ) ) {
+			$sanitized_color = sanitize_hex_color( $color );
+		} else {
+			$sanitized_color = preg_match( '/^#([A-Fa-f0-9]{3}){1,2}$/', $color ) ? $color : '';
+		}
+
+		return $sanitized_color ? $sanitized_color : '';
+	}
+
 	protected static function get_default_settings() {
 		$default_settings = array(
-			'logo_url'                       => '',
-			'submit_button_background_color' => '#4caf50',
-			'submit_button_text_color'       => '#ffffff',
-			'link_text_color'                => '#21759b',
+			'logo_url'                                  => '',
+			'submit_button_background_color'          => '#4caf50',
+			'submit_button_text_color'                => '#ffffff',
+			'link_text_color'                         => '#21759b',
+			'send_code_button_background_color'       => '',
+			'send_code_button_background_hover_color' => '',
+			'send_code_button_text_color'             => '',
+			'send_code_button_text_hover_color'       => '',
 		);
 
 		return $default_settings;

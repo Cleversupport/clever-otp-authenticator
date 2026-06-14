@@ -1,7 +1,50 @@
 jQuery(document).ready(function($) {
 	
 	if ( $('.otpa-color-picker').length ) {
-		$('.otpa-color-picker').wpColorPicker();
+		$('.otpa-color-picker').wpColorPicker({
+			change: function(event, ui) {
+				$(event.target).val(ui.color.toString()).trigger('change');
+			},
+			clear: function(event) {
+				$(event.target).val('').trigger('change');
+			}
+		});
+	}
+
+	$('#otpa_send_code_button_background_color, #otpa_send_code_button_background_hover_color, #otpa_send_code_button_text_color, #otpa_send_code_button_text_hover_color').on('change input', updateSendCodeButtonPreview);
+	$('.otpa-form-settings-preview iframe').on('load', updateSendCodeButtonPreview);
+
+	function updateSendCodeButtonPreview() {
+		var iframe = $('.otpa-form-settings-preview iframe');
+
+		if (! iframe.length || ! iframe[0].contentDocument) {
+			return;
+		}
+
+		var backgroundColor      = $('#otpa_send_code_button_background_color').val(),
+			backgroundHoverColor = $('#otpa_send_code_button_background_hover_color').val(),
+			textColor            = $('#otpa_send_code_button_text_color').val(),
+			textHoverColor       = $('#otpa_send_code_button_text_hover_color').val(),
+			css                  = '#otpa_send_code{border-radius:10px;}';
+
+		if (backgroundColor) {
+			css += '#otpa_send_code{background-color:' + backgroundColor + ';}';
+		}
+
+		if (backgroundHoverColor) {
+			css += '#otpa_send_code:hover{background-color:' + backgroundHoverColor + ';}';
+		}
+
+		if (textColor) {
+			css += '#otpa_send_code,#otpa_send_code *{color:' + textColor + ';}';
+		}
+
+		if (textHoverColor) {
+			css += '#otpa_send_code:hover,#otpa_send_code:hover *{color:' + textHoverColor + ';}';
+		}
+
+		$(iframe[0].contentDocument).find('#otpa-send-code-button-preview-style').remove();
+		$(iframe[0].contentDocument).find('head').append('<style id="otpa-send-code-button-preview-style">' + css + '</style>');
 	}
 
 	$('.otpa-media-select').click(function(e) {
