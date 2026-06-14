@@ -204,7 +204,7 @@ class Otpa_Hide_Login_Module {
 		$request     = wp_parse_url( $request_uri );
 
 		if ( self::is_wp_login_request( $request ) ) {
-			if ( self::is_logged_in_logout_request( $request ) ) {
+			if ( self::is_logout_request( $request ) ) {
 				return;
 			}
 
@@ -231,14 +231,19 @@ class Otpa_Hide_Login_Module {
 	public static function handle_wp_loaded_request() {
 		global $pagenow;
 
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$request     = wp_parse_url( $request_uri );
+
+		if ( self::is_wp_login_request( $request ) && self::is_logout_request( $request ) ) {
+			return;
+		}
+
 		if ( is_admin() && ! is_user_logged_in() && ! wp_doing_ajax() ) {
 			wp_safe_redirect( home_url( '/' ) );
 			exit;
 		}
 
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		$request     = wp_parse_url( $request_uri );
-		$path        = isset( $request['path'] ) ? $request['path'] : '';
+		$path = isset( $request['path'] ) ? $request['path'] : '';
 
 		if ( 'wp-login.php' === $pagenow && $path !== self::user_trailingslashit( $path ) && get_option( 'permalink_structure' ) ) {
 			wp_safe_redirect( self::user_trailingslashit( self::new_login_url() ) . ( ! empty( $_SERVER['QUERY_STRING'] ) ? '?' . wp_unslash( $_SERVER['QUERY_STRING'] ) : '' ) );
@@ -307,7 +312,7 @@ class Otpa_Hide_Login_Module {
 
 		$parsed_url = wp_parse_url( $url );
 
-		if ( self::is_logged_in_logout_request( $parsed_url ) ) {
+		if ( self::is_logout_request( $parsed_url ) ) {
 			return $url;
 		}
 
@@ -506,11 +511,7 @@ class Otpa_Hide_Login_Module {
 	 * @param array|false $request Parsed request URL.
 	 * @return bool
 	 */
-	protected static function is_logged_in_logout_request( $request ) {
-		if ( ! is_user_logged_in() ) {
-			return false;
-		}
-
+	protected static function is_logout_request( $request ) {
 		$query = array();
 
 		if ( is_array( $request ) && ! empty( $request['query'] ) ) {
