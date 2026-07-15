@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.17
+Stable tag: 1.0.18
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,9 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.18 =
+* Add a Default Login Redirect URL setting for passwordless logins, used when no shortcode or URL redirect_to value is provided.
 
 = 1.0.17 =
 * Hide the front-end WordPress admin bar for logged-in users restricted from dashboard access while preserving it for administrators, multisite super admins, and allowed dashboard roles.

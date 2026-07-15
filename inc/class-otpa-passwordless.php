@@ -172,7 +172,8 @@ class Otpa_Passwordless {
 			wp_set_auth_cookie( $user->ID );
 
 			$redirect              = isset( $payload['redirect'] ) ? $this->sanitize_redirect_to( $payload['redirect'] ) : false;
-			$redirect_to           = ( $redirect ) ? $redirect : home_url();
+			$default_redirect      = $this->get_default_login_redirect_url();
+			$redirect_to           = ( $redirect ) ? $redirect : ( $default_redirect ? $default_redirect : home_url() );
 			$requested_redirect_to = $redirect;
 			$result['message']     = __( 'Welcome!', 'otpa' ) . '<br/>' . __( 'Redirecting...', 'otpa' );
 			$result['redirect']    = apply_filters( 'login_redirect', $redirect_to, $requested_redirect_to, $user );
@@ -191,6 +192,10 @@ class Otpa_Passwordless {
 
 	protected function get_otp_type() {
 		return str_replace( 'otpa_', '', strtolower( get_class() ) );
+	}
+
+	protected function get_default_login_redirect_url() {
+		return Otpa_Settings::sanitize_redirect_url( Otpa_Settings::get_option( 'default_login_redirect_url', '' ) );
 	}
 
 	protected function sanitize_redirect_to( $redirect_to ) {
