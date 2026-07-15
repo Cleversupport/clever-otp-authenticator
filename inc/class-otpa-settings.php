@@ -239,6 +239,8 @@ class Otpa_Settings {
 			$settings[ $key ] = (bool) $settings[ $key ];
 		}
 
+		$settings['default_login_redirect_url'] = self::sanitize_redirect_url( $settings['default_login_redirect_url'] );
+
 		return apply_filters( 'otpa_sanitize_settings', $settings );
 	}
 
@@ -288,6 +290,14 @@ class Otpa_Settings {
 					'type'  => 'input_checkbox',
 					'class' => '',
 					'help'  => __( 'When Passwordless Authentication is enabled, users can choose to log in with the selected Authentication Gateway instead of using their login and password.', 'otpa' ) . '<br/>' . __( 'Passwordless Authentication and Two-Factor Authentication cannot be enabled at the same time.', 'otpa' ),
+				),
+				array(
+					'id'      => 'default_login_redirect_url',
+					'label'   => __( 'Default Login Redirect URL', 'otpa' ),
+					'type'    => 'input_text',
+					'default' => $default_settings['default_login_redirect_url'],
+					'class'   => 'regular-text',
+					'help'    => __( 'Optional default URL used after successful passwordless login when no shortcode or URL redirect_to value is provided. Relative URLs such as /book-your-cleaning-service/ are allowed; unsafe external redirects are ignored.', 'otpa' ),
 				),
 				array(
 					'id'    => 'enable_validation',
@@ -400,6 +410,7 @@ class Otpa_Settings {
 			'default_2fa'              => false,
 			'enable_passwordless'      => false,
 			'enable_validation'        => false,
+			'default_login_redirect_url' => '',
 			'validation_expiry'        => -1,
 			'validation_exclude_roles' => array(),
 			'sandbox'                  => false,
@@ -412,6 +423,17 @@ class Otpa_Settings {
 		);
 
 		return $default_settings;
+	}
+
+	public static function sanitize_redirect_url( $redirect_url ) {
+		if ( empty( $redirect_url ) ) {
+			return '';
+		}
+
+		$redirect_url = sanitize_text_field( wp_unslash( $redirect_url ) );
+		$redirect_url = wp_validate_redirect( $redirect_url, '' );
+
+		return $redirect_url ? $redirect_url : '';
 	}
 
 	protected function get_roles() {
