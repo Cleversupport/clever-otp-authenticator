@@ -9,7 +9,8 @@ class Otpa_WP_Email_Gateway extends Otpa_Abstract_Gateway {
 	protected $error_code            = false;
 	protected $can_change_identifier = false;
 	protected $identifier_meta       = 'otpa_mail';
-	protected $email_subject         = '';
+	protected $email_subject                = '';
+	protected $skip_account_email_fallback = false;
 
 	public function __construct( $init_hooks = false, $settings_renderer = false, $otpa_settings = false ) {
 		$this->name = __( 'WordPress Email', 'otpa' );
@@ -132,9 +133,64 @@ class Otpa_WP_Email_Gateway extends Otpa_Abstract_Gateway {
 		return filter_var( $email, FILTER_VALIDATE_EMAIL );
 	}
 
+	/**
+	 * Get a user by email OTP identifier, falling back to the WordPress account email.
+	 *
+	 * @param string $identifier The email identifier to get a user by.
+	 * @return bool|WP_User false on failure, the user on success.
+	 */
+	public function get_user_by_identifier( $identifier ) {
+		$user = parent::get_user_by_identifier( $identifier );
+
+		if ( false !== $user || $this->skip_account_email_fallback ) {
+			return $user;
+		}
+
+		$email = $this->sanitize_user_identifier( $identifier );
+
+		if ( ! $this->is_valid_identifier( $email ) ) {
+			return false;
+		}
+
+		$user = $this->get_user_by_account_email( $email );
+
+		if ( false !== $user ) {
+			update_user_meta( $user->ID, $this->identifier_meta, $email );
+		}
+
+		return $user;
+	}
+
+	public function set_user_identifier( $identifier, $user_id = false ) {
+		$this->skip_account_email_fallback = true;
+		$result                            = parent::set_user_identifier( $identifier, $user_id );
+		$this->skip_account_email_fallback = false;
+
+		return $result;
+	}
+
 	/*******************************************************************
 	 * Protected methods
 	 *******************************************************************/
+
+	protected function get_user_by_account_email( $email ) {
+		global $wpdb;
+
+		$user_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->users} WHERE user_email = %s LIMIT 2",
+				$email
+			)
+		);
+
+		if ( 1 !== count( $user_ids ) ) {
+			return false;
+		}
+
+		$user = get_user_by( 'ID', reset( $user_ids ) );
+
+		return $user ? $user : false;
+	}
 
 	protected static function get_default_settings() {
 
