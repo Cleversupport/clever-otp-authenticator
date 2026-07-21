@@ -141,7 +141,9 @@ body.otpa-page .otpa-wrapper,
 	opacity: 0;
 }
 
-.otpa-form button {
+.otpa-form button,
+.otpa-form a.submit {
+	display: block;
 	text-transform: uppercase;
 	width: 100%;
 	min-height: 50px;
@@ -162,7 +164,10 @@ body.otpa-page .otpa-wrapper,
 
 .otpa-form button:hover,
 .otpa-form button:active,
-.otpa-form button:focus {
+.otpa-form button:focus,
+.otpa-form a.submit:hover,
+.otpa-form a.submit:active,
+.otpa-form a.submit:focus {
 	outline: none;
 	border: 0;
 }

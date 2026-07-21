@@ -1,6 +1,6 @@
 <?php
 /**
- * Subscribe button module for Clever OTP Authenticator.
+ * Extra button module for Clever OTP Authenticator.
  *
  * This module was integrated from the former OTPA Subscribe Addon so the
  * subscribe button ships as part of the main Clever OTP Authenticator plugin
@@ -26,9 +26,6 @@ class Otpa_Subscribe_Button_Module {
 	/** Button URL option name. */
 	const OPTION_URL = 'otpa_subscribe_url';
 
-	/** Inline style handle used when no OTPA style handle is available. */
-	const STYLE_HANDLE = 'otpa-subscribe-button-module';
-
 	/**
 	 * Register module hooks.
 	 *
@@ -41,12 +38,11 @@ class Otpa_Subscribe_Button_Module {
 			add_action( 'otpa_after_main_settings', array( __CLASS__, 'render_settings_tab' ), 10, 1 );
 		}
 
-		add_filter( 'otpa_otp_form_vars', array( __CLASS__, 'append_subscribe_button' ), 99, 1 );
-		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_styles' ), 20 );
+		add_action( 'otpa_after_otp_submit_button', array( __CLASS__, 'render_extra_button' ), 10, 0 );
 	}
 
 	/**
-	 * Register subscribe button settings.
+	 * Register extra button settings using the legacy option names.
 	 *
 	 * @return void
 	 */
@@ -69,7 +65,7 @@ class Otpa_Subscribe_Button_Module {
 	}
 
 	/**
-	 * Render the Subscribe Button settings tab link.
+	 * Render the Extra Button settings tab link.
 	 *
 	 * @param string $active_tab Active OTP Authenticator settings tab.
 	 * @return void
@@ -77,13 +73,13 @@ class Otpa_Subscribe_Button_Module {
 	public static function render_settings_tab_link( $active_tab ) {
 		?>
 		<a href="<?php echo esc_url( admin_url( 'options-general.php?page=otpa&tab=subscribe-button' ) ); ?>" class="nav-tab<?php echo ( 'subscribe-button' === $active_tab ) ? ' nav-tab-active' : ''; ?>">
-			<?php esc_html_e( 'Subscribe Button', 'otpa' ); ?>
+			<?php esc_html_e( 'Extra Button', 'otpa' ); ?>
 		</a>
 		<?php
 	}
 
 	/**
-	 * Render the Subscribe Button settings tab content.
+	 * Render the Extra Button settings tab content.
 	 *
 	 * @param string $active_tab Active OTP Authenticator settings tab.
 	 * @return void
@@ -101,7 +97,7 @@ class Otpa_Subscribe_Button_Module {
 						<tr>
 							<th scope="row">
 								<label for="<?php echo esc_attr( self::OPTION_TEXT ); ?>">
-									<?php esc_html_e( 'Button Text', 'otpa' ); ?>
+									<?php esc_html_e( 'Extra Button Text', 'otpa' ); ?>
 								</label>
 							</th>
 							<td>
@@ -111,7 +107,7 @@ class Otpa_Subscribe_Button_Module {
 						<tr>
 							<th scope="row">
 								<label for="<?php echo esc_attr( self::OPTION_URL ); ?>">
-									<?php esc_html_e( 'Button URL', 'otpa' ); ?>
+									<?php esc_html_e( 'Extra Button URL', 'otpa' ); ?>
 								</label>
 							</th>
 							<td>
@@ -127,17 +123,16 @@ class Otpa_Subscribe_Button_Module {
 	}
 
 	/**
-	 * Append the configured subscribe button to the OTP form footer.
+	 * Render the configured extra button directly after the OTP submit button.
 	 *
-	 * @param array $vars OTP form variables.
-	 * @return array
+	 * @return void
 	 */
-	public static function append_subscribe_button( $vars ) {
+	public static function render_extra_button() {
 		$text = trim( (string) get_option( self::OPTION_TEXT, '' ) );
 		$url  = trim( (string) get_option( self::OPTION_URL, '' ) );
 
 		if ( '' === $text || '' === $url ) {
-			return $vars;
+			return;
 		}
 
 		$cf_id = isset( $_GET['cf_id'] ) ? absint( wp_unslash( $_GET['cf_id'] ) ) : 0;
@@ -146,36 +141,10 @@ class Otpa_Subscribe_Button_Module {
 			$url = add_query_arg( 'cf_id', $cf_id, $url );
 		}
 
-		$button = sprintf(
-			'<a class="otpa-subscribe-button" href="%1$s">%2$s</a>',
+		printf(
+			'<a class="submit otpa-extra-button" href="%1$s">%2$s</a>',
 			esc_url( $url ),
 			esc_html( $text )
 		);
-
-		if ( isset( $vars['otp_footer_message'] ) ) {
-			$vars['otp_footer_message'] .= ' ' . $button;
-		} else {
-			$vars['otp_footer_message'] = $button;
-		}
-
-		return $vars;
-	}
-
-	/**
-	 * Add minimal styling for the subscribe button.
-	 *
-	 * @return void
-	 */
-	public static function enqueue_styles() {
-		$css = '.otpa-form .otpa-subscribe-button{display:inline-block;margin-left:10px;padding:8px 14px;border-radius:4px;text-decoration:none}.otpa-form .otpa-subscribe-button:hover{opacity:.92}';
-
-		if ( wp_style_is( 'otpa-otp-form-inline-style', 'registered' ) || wp_style_is( 'otpa-otp-form-inline-style', 'enqueued' ) ) {
-			wp_add_inline_style( 'otpa-otp-form-inline-style', $css );
-			return;
-		}
-
-		wp_register_style( self::STYLE_HANDLE, false, array(), '1.0.0' );
-		wp_enqueue_style( self::STYLE_HANDLE );
-		wp_add_inline_style( self::STYLE_HANDLE, $css );
 	}
 }
