@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.19
+Stable tag: 1.0.20
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,9 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.20 =
+* Rename Subscribe Button to Extra Button and place it directly below the OTP Submit button with matching dynamic form styling.
 
 = 1.0.19 =
 * Allow passwordless WordPress Email logins to fall back to existing account email addresses when OTP email metadata has not been created yet.

@@ -1017,14 +1017,14 @@ class Otpa {
 			}
 		' : '';
 		$styles                                   = '
-			.otpa-form button.submit {
+			.otpa-form .submit {
 				background-color: ' . $submit_button_background_color . ';
 				color: ' . $submit_button_text_color . ';
 			}
 
-			.otpa-form button.submit:not([disabled]):hover,
-			.otpa-form button.submit:not([disabled]):active,
-			.otpa-form button.submit:not([disabled]):focus {
+			.otpa-form .submit:not([disabled]):hover,
+			.otpa-form .submit:not([disabled]):active,
+			.otpa-form .submit:not([disabled]):focus {
 				background-color: ' . otpa_adjust_color_brightness( $submit_button_background_color, -10 ) . ';
 			}
 
