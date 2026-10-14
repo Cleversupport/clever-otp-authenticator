@@ -1452,3 +1452,75 @@ msgstr ""
 #. Author URI of the plugin
 msgid "https://froger.me/"
 msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Enable Automatic Logout Due to Inactivity"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Inactivity Timeout (minutes)"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Show Warning Before Logout"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Warning Before Logout (minutes)"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Redirect After Logout"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Automatic Logout Due to Inactivity"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Automatically log out users after this period without activity."
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Must be lower than the timeout. At a one-minute timeout, zero shows the warning during the final 30 seconds."
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Apply Automatic Logout To"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "All Users"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "All Users Except Administrators"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Session expired due to inactivity."
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Session Expiring Soon"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Your session is about to expire due to inactivity."
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "You will be automatically logged out in %s."
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Stay Logged In"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Unable to verify your session. Retrying…"
+msgstr ""
+
+#: inc/modules/inactivity/class-otpa-inactivity-module.php
+msgid "Log Out Securely"
+msgstr ""

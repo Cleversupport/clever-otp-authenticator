@@ -1,0 +1,8 @@
+.otpa-idle-overlay[hidden] { display: none !important; }
+.otpa-idle-overlay { position: fixed; inset: 0; z-index: 2147483647; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.otpa-idle-overlay .otpa-idle-modal { box-sizing: border-box; width: 100%; max-width: 440px; max-height: 90vh; overflow: auto; padding: 28px; border-radius: 8px; background: #fff; color: #1d2327; box-shadow: 0 8px 40px rgba(0,0,0,.3); font: 16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align: left; }
+.otpa-idle-overlay h2 { margin: 0 0 16px; color: #1d2327; font-size: 24px; line-height: 1.3; }
+.otpa-idle-overlay p { margin: 0 0 16px; }
+.otpa-idle-overlay button { display: block; padding: 10px 18px; margin-bottom: 12px; border: 0; border-radius: 4px; background: #2271b1; color: #fff; font: inherit; cursor: pointer; }
+.otpa-idle-overlay a { color: #2271b1; }
+.otpa-idle-overlay :focus-visible { outline: 3px solid #135e96; outline-offset: 3px; }

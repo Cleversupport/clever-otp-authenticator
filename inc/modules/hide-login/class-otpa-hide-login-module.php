@@ -249,6 +249,7 @@ class Otpa_Hide_Login_Module {
 							</td>
 						</tr>
 					</table>
+					<?php Otpa_Inactivity_Module::render_settings(); ?>
 					<?php submit_button(); ?>
 				</form>
 			</div>
@@ -292,6 +293,10 @@ class Otpa_Hide_Login_Module {
 	 */
 	public static function handle_wp_loaded_request() {
 		global $pagenow;
+
+		if ( is_admin() && ! wp_doing_ajax() ) {
+			Otpa_Inactivity_Module::redirect_expired();
+		}
 
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$request     = wp_parse_url( $request_uri );
