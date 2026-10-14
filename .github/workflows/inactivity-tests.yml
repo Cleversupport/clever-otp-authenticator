@@ -1,0 +1,20 @@
+name: Inactivity contract tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP contracts and first-party syntax
+        run: |
+          php tests/inactivity.php
+          git ls-files '*.php' ':!:libraries/**' | while read -r file; do php -l "$file" || exit 1; done
+      - name: Browser contracts and syntax
+        run: |
+          node --check js/inactivity.js
+          node tests/inactivity.js
