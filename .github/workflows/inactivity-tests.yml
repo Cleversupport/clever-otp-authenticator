@@ -8,11 +8,20 @@ permissions:
 jobs:
   contracts:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.0', '8.4']
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: none
       - name: PHP contracts and first-party syntax
         run: |
           php tests/inactivity.php
+          php tests/hide-login-logout.php
           git ls-files '*.php' ':!:libraries/**' | while read -r file; do php -l "$file" || exit 1; done
       - name: Browser contracts and syntax
         run: |

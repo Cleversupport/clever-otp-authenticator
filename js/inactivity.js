@@ -4,26 +4,29 @@
 	var c = otpaInactivity, deadline = Date.now() + c.remaining * 1000;
 	var channel, dialog, counter, button, previousFocus, pending = false, busy = false;
 	var lastEvent = 0, lastReport = 0, retryAt = 0, ended = false;
-	var serverDeadline = deadline;
+	var serverDeadline = deadline, activityVersion = 0, sharedActivity = 0;
+	var queuedStay = false, queuedStatus = false;
 	try { channel = new BroadcastChannel(c.key); } catch (e) { /* Storage remains available. */ }
 	function read() {
 		try { return JSON.parse(localStorage.getItem(c.key)); } catch (e) { return null; }
 	}
 	function receive(state) {
-		if (!state || typeof state.deadline !== 'number') { return; }
+		if (!state || typeof state.deadline !== 'number' || !isFinite(state.deadline)) { return; }
 		if (state.logout) { ended = true; location.assign(c.redirect); return; }
-		deadline = state.deadline;
+		// Out-of-order confirmation must not shorten a newer interaction deadline.
+		deadline = Math.max(deadline, state.deadline);
+		if (typeof state.activityAt === 'number' && isFinite(state.activityAt)) { sharedActivity = Math.max(sharedActivity, state.activityAt); }
 		if (deadline - Date.now() > c.warning * 1000) { close(); }
 	}
 	function publish(logout) {
-		var state = { deadline: deadline, activityAt: lastEvent, logout: !!logout };
+		var state = { deadline: deadline, activityAt: sharedActivity, logout: !!logout };
 		try { localStorage.setItem(c.key, JSON.stringify(state)); } catch (e) { /* BroadcastChannel fallback. */ }
 		if (channel) { channel.postMessage(state); }
 	}
 	// Do not renew on page load. Reconcile with the server, which is authoritative.
 	var shared = read();
 	if (shared && shared.logout) { location.assign(c.redirect); return; }
-	if (shared && shared.deadline > deadline) { deadline = shared.deadline; }
+	receive(shared);
 	if (channel) { channel.onmessage = function (event) { receive(event.data); }; }
 	window.addEventListener('storage', function (event) {
 		if (event.key === c.key && event.newValue) {
@@ -50,7 +53,7 @@
 			var message = document.createElement('p'); message.id = 'otpa-idle-message'; message.textContent = c.message;
 			counter = document.createElement('p'); counter.setAttribute('role', 'timer');
 			button = document.createElement('button'); button.type = 'button'; button.textContent = c.stay;
-			button.addEventListener('click', function () { pending = false; request('stay'); });
+			button.addEventListener('click', function () { request('stay'); });
 			var fallback = document.createElement('a'); fallback.href = c.fallback; fallback.textContent = c.logout;
 			panel.append(title, message, counter, button, fallback); dialog.append(panel); document.body.append(dialog);
 			document.addEventListener('focusin', function (event) {
@@ -70,9 +73,15 @@
 		show(); counter.textContent = c.failure; button.disabled = false;
 	}
 	function request(mode) {
-		if (busy || ended) { return; }
+		if (ended) { return; }
+		if (busy) {
+			if (mode === 'stay') { queuedStay = true; }
+			if (mode === 'status') { queuedStatus = true; }
+			return;
+		}
 		busy = true;
-		var started = Date.now();
+		var started = Date.now(), version = activityVersion;
+		if (mode === 'activity') { pending = false; }
 		var controller = new AbortController(), abort = setTimeout(function () { controller.abort(); }, 10000);
 		fetch(c.ajax, { method: 'POST', credentials: 'same-origin', signal: controller.signal,
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -84,40 +93,58 @@
 				if (data && data.data && data.data.expired) {
 					ended = true; publish(true); location.assign(c.redirect); return;
 				}
-				// WordPress returns 0 when the authenticated AJAX action no longer exists for this visitor.
-				if (body.trim() === '0') { ended = true; publish(true); location.assign(c.redirect); return; }
-				if (!response.ok || !data || !data.success || typeof data.data.remaining !== 'number') { throw new Error('verification'); }
+				// An unstructured 0 may mean a missing/disabled action, not confirmed logout.
+				if (!response.ok || !data || !data.success || typeof data.data.remaining !== 'number' || !isFinite(data.data.remaining) || data.data.remaining < 0 || data.data.remaining > c.timeout) { throw new Error('verification'); }
 				c.nonce = data.data.nonce;
-				serverDeadline = Date.now() + data.data.remaining * 1000;
+				serverDeadline = started + data.data.remaining * 1000;
 				var latest = read();
 				deadline = serverDeadline;
-				if (lastEvent > started) { deadline = lastEvent + c.timeout * 1000; pending = true; }
-				if (latest && latest.activityAt > started) { deadline = Math.max(deadline, latest.deadline); }
+				if (latest && typeof latest.activityAt === 'number') { sharedActivity = Math.max(sharedActivity, latest.activityAt); }
+				if (mode === 'stay' && activityVersion === version) { pending = false; }
+				if (activityVersion !== version) { pending = true; }
+				if (pending) { deadline = Math.max(deadline, lastEvent + c.timeout * 1000); }
+				if (mode === 'stay') { sharedActivity = Math.max(sharedActivity, serverDeadline - c.timeout * 1000); }
+				// Also preserve unreported activity received through BroadcastChannel when storage is blocked.
+				if (sharedActivity > serverDeadline - c.timeout * 1000 + 1000) { deadline = Math.max(deadline, sharedActivity + c.timeout * 1000); }
 				lastReport = Date.now(); retryAt = 0;
-				publish(false);
+				if (!ended) { publish(false); }
 				if (mode === 'stay' || deadline - Date.now() > c.warning * 1000) { close(); }
 			});
-		}).catch(failed).finally(function () { clearTimeout(abort); busy = false; });
+		}).catch(function () { if (!ended) { failed(); } }).then(function () {
+			clearTimeout(abort); busy = false;
+			if (ended) { return; }
+			if (queuedStay) { queuedStay = false; request('stay'); }
+			else if (queuedStatus) { queuedStatus = false; request('status'); }
+		});
 	}
 	function activity(event) {
 		if (!event.isTrusted || ended || (dialog && !dialog.hidden) || Date.now() >= deadline) { return; }
 		var now = Date.now();
 		if (now - lastEvent < 500) { return; }
-		lastEvent = now; deadline = now + c.timeout * 1000; pending = true; publish(false);
-		if (now - lastReport >= 10000 || serverDeadline - now <= 15000) { pending = false; request('activity'); }
+		lastEvent = now; activityVersion += 1; sharedActivity = Math.max(sharedActivity, now);
+		deadline = now + c.timeout * 1000; pending = true; publish(false);
+		if (now - lastReport >= 10000 || serverDeadline - now <= 15000) { request('activity'); }
 	}
 	['click', 'keydown', 'touchstart', 'scroll', 'pointerdown'].forEach(function (name) {
 		document.addEventListener(name, activity, { passive: true, capture: true });
 	});
+	function countdown() {
+		var remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+		counter.textContent = c.countdown.replace('%s', Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0'));
+	}
 	function tick() {
-		if (ended || busy) { return; }
+		if (ended) { return; }
 		var now = Date.now();
+		if (busy) {
+			if (dialog && !dialog.hidden && !retryAt) { countdown(); }
+			return;
+		}
 		if (retryAt) { if (now >= retryAt) { request('status'); } return; }
-		if (pending && now - lastReport >= 10000) { pending = false; request('activity'); return; }
+		if (pending && (now - lastReport >= 10000 || serverDeadline - now <= 15000)) { request('activity'); return; }
 		var remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
-		if (!remaining) { request('status'); return; }
+		if (!remaining || now >= serverDeadline) { request('status'); return; }
 		if (c.warning && remaining <= c.warning) {
-			show(); counter.textContent = c.countdown.replace('%s', Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0'));
+			show(); countdown();
 		}
 	}
 	document.addEventListener('visibilitychange', function () {

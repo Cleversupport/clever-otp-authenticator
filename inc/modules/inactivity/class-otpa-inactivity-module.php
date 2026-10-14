@@ -16,6 +16,8 @@ class Otpa_Inactivity_Module {
 	/** Register settings even when protection is disabled. */
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		// WordPress < 5.5 supplies no user ID to wp_logout. Capture before cookies/current user clear.
+		add_action( 'clear_auth_cookie', array( __CLASS__, 'cleanup' ), 0 );
 		if ( ! self::settings()['enabled'] ) {
 			return;
 		}
@@ -26,7 +28,7 @@ class Otpa_Inactivity_Module {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_action( 'wp_ajax_otpa_inactivity', array( __CLASS__, 'endpoint' ) );
-		add_action( 'wp_logout', array( __CLASS__, 'cleanup' ), 10, 1 );
+		add_action( 'wp_ajax_nopriv_otpa_inactivity', array( __CLASS__, 'logged_out_status' ) );
 	}
 
 	public static function defaults() {
@@ -37,7 +39,7 @@ class Otpa_Inactivity_Module {
 		return self::sanitize( get_option( self::OPTION, array() ) );
 	}
 
-	/** Reject fractional, negative and nonnumeric durations; zero disables the warning interval at a one-minute timeout. */
+	/** Reject invalid durations; zero selects the final 30-second warning. */
 	public static function sanitize( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$out   = array_merge( self::defaults(), array_intersect_key( $input, self::defaults() ) );
@@ -63,7 +65,7 @@ class Otpa_Inactivity_Module {
 		$url = is_array( $relative ) && ! isset( $relative['scheme'] ) && ! isset( $relative['host'] ) && 0 !== strpos( $value, '//' ) ? home_url( '/' . ltrim( $value, '/' ) ) : esc_url_raw( $value, array( 'http', 'https' ) );
 		$a   = wp_parse_url( $url );
 		$b   = wp_parse_url( home_url() );
-		if ( ! $a || empty( $a['host'] ) || strtolower( $a['host'] ) !== strtolower( $b['host'] ) || isset( $a['user'] ) || isset( $a['pass'] ) || ( isset( $a['port'] ) ? $a['port'] : null ) !== ( isset( $b['port'] ) ? $b['port'] : null ) ) {
+		if ( ! $a || empty( $a['host'] ) || strtolower( $a['host'] ) !== strtolower( $b['host'] ) || empty( $a['scheme'] ) || $a['scheme'] !== $b['scheme'] || isset( $a['user'] ) || isset( $a['pass'] ) || ( isset( $a['port'] ) ? $a['port'] : null ) !== ( isset( $b['port'] ) ? $b['port'] : null ) ) {
 			return $fallback;
 		}
 		return wp_validate_redirect( $url, $fallback );
@@ -105,7 +107,7 @@ class Otpa_Inactivity_Module {
 	public static function applies() {
 		$s = self::settings();
 		$u = wp_get_current_user();
-		return $s['enabled'] && $u->exists() && wp_get_session_token() && ! ( $s['exclude_admins'] && ( in_array( 'administrator', (array) $u->roles, true ) || user_can( $u, 'manage_options' ) || ( is_multisite() && is_super_admin( $u->ID ) ) ) );
+		return $s['enabled'] && $u->exists() && wp_get_session_token() && WP_Session_Tokens::get_instance( $u->ID )->verify( wp_get_session_token() ) && ! ( $s['exclude_admins'] && ( in_array( 'administrator', (array) $u->roles, true ) || user_can( $u, 'manage_options' ) || ( is_multisite() && is_super_admin( $u->ID ) ) ) );
 	}
 
 	/** Never store or expose the authentication token itself. Site policy is scoped within a shared multisite session. */
@@ -118,33 +120,57 @@ class Otpa_Inactivity_Module {
 		$key  = self::key();
 		$last = get_user_meta( $id, $key, true );
 		if ( '' === $last ) {
-			// Bootstrap from the native session creation time, never from a background request.
-			$session = WP_Session_Tokens::get_instance( $id )->get( wp_get_session_token() );
-			$start   = isset( $session['login'] ) ? (int) $session['login'] : time();
-			add_user_meta( $id, $key, $start, true );
+			// Only an untracked session gets a first-observation baseline. Never reset existing records.
+			add_user_meta( $id, $key, time(), true );
 			$last = get_user_meta( $id, $key, true );
 		}
 		return (int) $last;
 	}
 
 	public static function expired() {
-		return time() >= self::last_activity() + self::settings()['timeout'] * MINUTE_IN_SECONDS;
+		$timeout = self::settings()['timeout'] * MINUTE_IN_SECONDS;
+		if ( time() < self::last_activity() + $timeout ) {
+			return false;
+		}
+		// Recheck at the boundary: another tab may have reported after this request loaded user metadata.
+		wp_cache_delete( get_current_user_id(), 'user_meta' );
+		if ( ! WP_Session_Tokens::get_instance( get_current_user_id() )->verify( wp_get_session_token() ) ) {
+			return true;
+		}
+		return time() >= self::last_activity() + $timeout;
 	}
 
-	public static function cleanup( $user_id ) {
-		// wp_logout fires after cookies/current user are cleared; enforcement deletes its own state beforehand.
-		if ( wp_get_session_token() ) {
-			delete_user_meta( $user_id, self::key() );
+	/** Remove only this token's records across sites, before WordPress clears authentication. */
+	public static function cleanup() {
+		$user_id = get_current_user_id();
+		$token   = wp_get_session_token();
+		if ( ! $user_id || ! $token ) {
+			return;
+		}
+		$suffix = hash_hmac( 'sha256', $token, wp_salt( 'auth' ) );
+		foreach ( array_keys( get_user_meta( $user_id ) ) as $key ) {
+			if ( preg_match( '/^_otpa_idle_[0-9]+_' . preg_quote( $suffix, '/' ) . '$/', $key ) ) {
+				delete_user_meta( $user_id, $key );
+			}
 		}
 	}
 
 	public static function logout() {
-		delete_user_meta( get_current_user_id(), self::key() );
-		wp_logout(); // Destroys only the current token and clears WordPress auth cookies.
+		wp_logout(); // Destroys only the current token; clear_auth_cookie cleans its metadata.
+	}
+
+	/** Read-only logged-out status, never a public logout or renewal action. */
+	public static function logged_out_status() {
+		wp_send_json_error( array( 'expired' => true ), 401 );
 	}
 
 	/** All cookie-authenticated requests validate expiration; none implicitly renew it. */
 	public static function enforce() {
+		global $pagenow;
+		// Preserve core's nonce/session handling for the native Hide Login logout exception.
+		if ( 'wp-login.php' === $pagenow && isset( $_REQUEST['action'] ) && 'logout' === $_REQUEST['action'] ) {
+			return;
+		}
 		if ( ! self::applies() || ! self::expired() ) {
 			return;
 		}
@@ -168,7 +194,7 @@ class Otpa_Inactivity_Module {
 
 	/** Authenticated POST endpoint. Expiration always precedes renewal. */
 	public static function endpoint() {
-		if ( 'POST' !== $_SERVER['REQUEST_METHOD'] || ! self::applies() ) {
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] || ! self::applies() ) {
 			wp_send_json_error( array(), 403 );
 		}
 		check_ajax_referer( 'otpa_inactivity', 'nonce' );
@@ -176,10 +202,13 @@ class Otpa_Inactivity_Module {
 			self::logout();
 			wp_send_json_error( array( 'expired' => true, 'redirect' => self::settings()['redirect'] ), 401 );
 		}
-		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+		$mode = isset( $_POST['mode'] ) && is_string( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+		if ( ! in_array( $mode, array( 'status', 'activity', 'stay' ), true ) ) {
+			wp_send_json_error( array(), 400 );
+		}
 		if ( 'activity' === $mode || 'stay' === $mode ) {
 			$last = self::last_activity();
-			$age  = isset( $_POST['idle_ms'] ) ? filter_var( wp_unslash( $_POST['idle_ms'] ), FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0, 'max_range' => 31536000000 ) ) ) : 0;
+			$age  = isset( $_POST['idle_ms'] ) ? filter_var( wp_unslash( $_POST['idle_ms'] ), FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0, 'max_range' => PHP_INT_MAX ) ) ) : 0;
 			if ( false === $age ) {
 				wp_send_json_error( array(), 400 );
 			}
@@ -187,6 +216,8 @@ class Otpa_Inactivity_Module {
 			if ( $next > $last && ( time() - $last >= 5 || 'stay' === $mode ) ) {
 				// Compare-and-set avoids overwriting a newer activity report from another request.
 				update_user_meta( get_current_user_id(), self::key(), $next, $last );
+				// A failed compare-and-set may mean another request won; return its current deadline.
+				wp_cache_delete( get_current_user_id(), 'user_meta' );
 			}
 		}
 		wp_send_json_success( array( 'remaining' => max( 0, self::last_activity() + self::settings()['timeout'] * MINUTE_IN_SECONDS - time() ), 'nonce' => wp_create_nonce( 'otpa_inactivity' ) ) );
