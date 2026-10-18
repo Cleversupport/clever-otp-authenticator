@@ -23,8 +23,11 @@ jobs:
           php tests/inactivity.php
           php tests/hide-login-logout.php
           php tests/elementor-maintenance-mode.php
+          php tests/usage-guide.php
           git ls-files '*.php' ':!:libraries/**' | while read -r file; do php -l "$file" || exit 1; done
       - name: Browser contracts and syntax
         run: |
           node --check js/inactivity.js
           node tests/inactivity.js
+          node --check js/admin/usage-guide.js
+          node tests/usage-guide.js
