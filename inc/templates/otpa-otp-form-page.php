@@ -10,7 +10,10 @@
 		<?php wp_head(); ?>
 	</head>
 	<body class="otpa-<?php echo esc_attr( str_replace( '_', '-', $otp_form_type ) ); ?> otpa-page">
-		<?php load_template( OTPA_PLUGIN_PATH . 'inc/templates/otpa-otp-form-card.php' ); ?>
+		<?php
+		// Keep the page's form variables: wp_head callbacks may change the global query.
+		include OTPA_PLUGIN_PATH . 'inc/templates/otpa-otp-form-card.php';
+		?>
 		<?php wp_footer(); ?>
 	</body>
 </html>
