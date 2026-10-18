@@ -1,0 +1,17 @@
+.otpa-usage-guide { max-width: 1000px; }
+.otpa-usage-guide nav ul { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.otpa-usage-guide .stuffbox { margin-top: 20px; }
+.otpa-usage-guide .inside { padding: 8px 20px 16px; }
+.otpa-usage-guide p { max-width: 80ch; line-height: 1.7; overflow-wrap: anywhere; }
+.otpa-usage-guide h2 { scroll-margin-top: 50px; }
+.otpa-guide-example { margin: 18px 0; }
+.otpa-guide-example label { display: block; font-weight: 600; margin-bottom: 6px; }
+.otpa-guide-example textarea { display: block; box-sizing: border-box; width: 100%; max-width: 100%; font-family: monospace; margin-bottom: 8px; resize: vertical; }
+.otpa-guide-copy[hidden] { display: none; }
+.otpa-guide-status { position: sticky; bottom: 0; padding: 10px; background: #fff; border-left: 4px solid #2271b1; }
+.otpa-guide-status:empty { display: none; }
+@media (max-width: 600px) {
+	.otpa-usage-guide .inside { padding: 8px 12px; }
+	.otpa-usage-guide nav ul { display: block; }
+	.otpa-usage-guide nav li { margin-bottom: 10px; }
+}

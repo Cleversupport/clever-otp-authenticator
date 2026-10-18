@@ -3,7 +3,7 @@
 Plugin Name: Clever OTP Authenticator
 Plugin URI: https://github.com/Cleversupport/clever-otp-authenticator
 Description: Plugin personalizado para autenticación OTP en WordPress.
-Version: 1.0.22
+Version: 1.0.23
 Author: Clever
 Author URI: https://clevernwa.com
 GitHub Plugin URI: Cleversupport/clever-otp-authenticator
@@ -34,6 +34,8 @@ require_once OTPA_PLUGIN_PATH . 'inc/modules/hide-login/class-otpa-hide-login-mo
 require_once OTPA_PLUGIN_PATH . 'inc/modules/inactivity/class-otpa-inactivity-module.php';
 
 if ( is_admin() ) {
+	require_once OTPA_PLUGIN_PATH . 'inc/admin/class-otpa-usage-guide.php';
+	Otpa_Usage_Guide::init();
 	$clever_otp_authenticator_github_updater = new Clever_OTP_Authenticator_GitHub_Updater( __FILE__ );
 	$clever_otp_authenticator_github_updater->register_hooks();
 }
