@@ -16,6 +16,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Verify plugin version matches release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          PLUGIN_VERSION="$(sed -n 's/^Version:[[:space:]]*//p' clever-otp-authenticator.php | tr -d '\r')"
+          RELEASE_VERSION="${RELEASE_TAG#[vV]}"
+
+          if [[ -z "${PLUGIN_VERSION}" || "${PLUGIN_VERSION}" != "${RELEASE_VERSION}" ]]; then
+            echo "::error::Plugin header Version '${PLUGIN_VERSION}' does not match release tag '${RELEASE_TAG}'."
+            exit 1
+          fi
+
       - name: Build WordPress plugin package
         run: |
           set -euo pipefail
