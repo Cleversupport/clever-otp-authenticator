@@ -66,6 +66,9 @@ function tab(options = {}) {
 	assert.equal(a.modal().hidden, false); assert.match(a.modal().children[0].children[2].textContent, /0:29/);
 	now += 1000; await a.tick(); assert.match(a.modal().children[0].children[2].textContent, /0:28/);
 	console.log('PASS: warning threshold and one-second countdown');
+	 a.listeners.mousemove({ isTrusted: true }); await flush();
+	assert.equal(serverLast, now); assert.equal(a.modal().hidden, true);
+	console.log('PASS: trusted mouse movement renews while the warning is visible');
 	await b.interact(); assert.equal(a.modal().hidden, true); assert.equal(serverLast, now);
 	console.log('PASS: activity in another tab renews server and closes warning');
 	now += 31000; await a.tick();
