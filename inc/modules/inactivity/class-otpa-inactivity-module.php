@@ -197,14 +197,18 @@ class Otpa_Inactivity_Module {
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] || ! self::applies() ) {
 			wp_send_json_error( array(), 403 );
 		}
-		check_ajax_referer( 'otpa_inactivity', 'nonce' );
-		if ( self::expired() ) {
-			self::logout();
-			wp_send_json_error( array( 'expired' => true, 'redirect' => self::settings()['redirect'] ), 401 );
-		}
 		$mode = isset( $_POST['mode'] ) && is_string( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
 		if ( ! in_array( $mode, array( 'status', 'activity', 'stay' ), true ) ) {
 			wp_send_json_error( array(), 400 );
+		}
+		// Read-only status validates the current cookie/session, allowing an old
+		// page to recover its nonce after login elsewhere. Renewal still requires CSRF protection.
+		if ( 'status' !== $mode ) {
+			check_ajax_referer( 'otpa_inactivity', 'nonce' );
+		}
+		if ( self::expired() ) {
+			self::logout();
+			wp_send_json_error( array( 'expired' => true, 'redirect' => self::settings()['redirect'] ), 401 );
 		}
 		if ( 'activity' === $mode || 'stay' === $mode ) {
 			$last = self::last_activity();
@@ -220,7 +224,12 @@ class Otpa_Inactivity_Module {
 				wp_cache_delete( get_current_user_id(), 'user_meta' );
 			}
 		}
-		wp_send_json_success( array( 'remaining' => max( 0, self::last_activity() + self::settings()['timeout'] * MINUTE_IN_SECONDS - time() ), 'nonce' => wp_create_nonce( 'otpa_inactivity' ) ) );
+		wp_send_json_success( array(
+			'remaining' => max( 0, self::last_activity() + self::settings()['timeout'] * MINUTE_IN_SECONDS - time() ),
+			'nonce' => wp_create_nonce( 'otpa_inactivity' ),
+			'key' => self::key(),
+			'fallback' => wp_logout_url( self::settings()['redirect'] ),
+		) );
 	}
 
 	public static function enqueue() {

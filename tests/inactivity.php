@@ -76,6 +76,16 @@ expect( $original === Otpa_Inactivity_Module::rest_expired( $original ), 'unexpi
 $key = Otpa_Inactivity_Module::key(); $meta[$key] = time() - 20;
 $r = endpoint( 'status' );
 expect( $r['success'] && $meta[$key] <= time() - 20, 'polling never renews activity' );
+$before_status = $meta[$key]; $nonce = false;
+$r = endpoint( 'status' );
+expect( $r['success'] && $meta[$key] === $before_status && 'fresh-nonce' === $r['data']['nonce'] && $key === $r['data']['key'], 'cookie-authenticated read-only status refreshes stale nonce without renewing activity' );
+expect( wp_logout_url( '' ) === $r['data']['fallback'], 'status refreshes the native secure logout fallback' );
+$r = endpoint( 'activity' );
+expect( 403 === $r['status'] && $meta[$key] === $before_status, 'stale nonce still cannot report activity' );
+$token = 'independent-session'; $new_key = Otpa_Inactivity_Module::key(); $meta[$new_key] = time() - 5;
+$new_baseline = $meta[$new_key]; $r = endpoint( 'status' );
+expect( $r['success'] && $new_key === $r['data']['key'] && $meta[$new_key] === $new_baseline && $meta[$key] === $before_status, 'status binds to the current cookie session and preserves both sessions activity' );
+$token = 'session-a'; $nonce = true;
 $_POST['idle_ms'] = 5000;
 $r = endpoint( 'activity' );
 expect( $meta[$key] <= time() - 5, 'queued activity uses interaction age rather than wake time' );
@@ -124,6 +134,11 @@ $r = endpoint( array( 'stay' ) ); expect( 400 === $r['status'], 'array mode reje
 $_SERVER['REQUEST_METHOD'] = 'GET';
 try { Otpa_Inactivity_Module::endpoint(); } catch ( Response $r ) { expect( 403 === $r->data['status'], 'GET cannot renew session' ); }
 try { Otpa_Inactivity_Module::logged_out_status(); } catch ( Response $r ) { expect( 401 === $r->data['status'], 'logged-out endpoint only reports expiration' ); }
+$nonce = false; $meta[$key] = time() - 61;
+$r = endpoint( 'status' );
+expect( 401 === $r['status'] && ! $logged, 'read-only nonce recovery cannot revive an expired cookie session' );
+$r = endpoint( 'status' );
+expect( 403 === $r['status'], 'unauthenticated direct endpoint cannot return a nonce or session data' );
 $options['otpa_inactivity']['enabled'] = 0; Otpa_Inactivity_Module::init();
 expect( isset( $hooks['clear_auth_cookie'] ), 'metadata cleanup stays registered when feature is disabled' );
 $logged = false; $scripts = array(); Otpa_Inactivity_Module::enqueue();
