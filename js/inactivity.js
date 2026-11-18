@@ -118,14 +118,14 @@
 		});
 	}
 	function activity(event) {
-		if (!event.isTrusted || ended || (dialog && !dialog.hidden) || Date.now() >= deadline) { return; }
+		if (!event.isTrusted || ended) { return; }
 		var now = Date.now();
 		if (now - lastEvent < 500) { return; }
 		lastEvent = now; activityVersion += 1; sharedActivity = Math.max(sharedActivity, now);
 		deadline = now + c.timeout * 1000; pending = true; publish(false);
 		if (now - lastReport >= 10000 || serverDeadline - now <= 15000) { request('activity'); }
 	}
-	['click', 'keydown', 'touchstart', 'scroll', 'pointerdown'].forEach(function (name) {
+	['click', 'keydown', 'input', 'change', 'touchstart', 'scroll', 'pointerdown', 'mousemove'].forEach(function (name) {
 		document.addEventListener(name, activity, { passive: true, capture: true });
 	});
 	function countdown() {
