@@ -228,8 +228,8 @@ class Otpa_Inactivity_Module {
 			return;
 		}
 		$s = self::settings();
-		wp_enqueue_script( 'otpa-inactivity', OTPA_PLUGIN_URL . 'js/inactivity.js', array(), '1.0.21', true );
-		wp_enqueue_style( 'otpa-inactivity', OTPA_PLUGIN_URL . 'css/inactivity.css', array(), '1.0.21' );
+		wp_enqueue_script( 'otpa-inactivity', OTPA_PLUGIN_URL . 'js/inactivity.js', array(), filemtime( OTPA_PLUGIN_PATH . 'js/inactivity.js' ), true );
+		wp_enqueue_style( 'otpa-inactivity', OTPA_PLUGIN_URL . 'css/inactivity.css', array(), filemtime( OTPA_PLUGIN_PATH . 'css/inactivity.css' ) );
 		wp_localize_script( 'otpa-inactivity', 'otpaInactivity', array(
 			'ajax' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( 'otpa_inactivity' ),
 			'key' => self::key(), 'timeout' => $s['timeout'] * MINUTE_IN_SECONDS,
