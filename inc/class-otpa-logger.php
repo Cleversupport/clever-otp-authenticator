@@ -23,8 +23,8 @@ class Otpa_Logger {
 		);
 
 		if ( $init_hooks ) {
-			add_action( 'wp', array( get_class(), 'register_logs_cleanup' ) );
-			add_action( 'otpa_logs_cleanup', array( get_class(), 'clear_logs' ) );
+			add_action( 'wp', array( __CLASS__, 'register_logs_cleanup' ) );
+			add_action( 'otpa_logs_cleanup', array( __CLASS__, 'clear_logs' ) );
 			add_action( 'wp_ajax_otpa_refresh_logs', array( $this, 'refresh_logs_async' ), 10, 0 );
 			add_action( 'wp_ajax_otpa_clear_logs', array( $this, 'clear_logs_async' ), 10, 0 );
 			add_action( 'admin_menu', array( $this, 'register_settings' ), 10, 0 );
@@ -108,8 +108,8 @@ class Otpa_Logger {
 	public static function log( $expression, $extend = '', $destination = 'error_log', $force = false ) {
 		$destination = ( 'dblog' === $destination ) ? 'db_log' : $destination;
 
-		if ( method_exists( get_class(), $destination ) ) {
-			call_user_func_array( array( get_class(), $destination ), array( $expression, $extend, $force ) );
+		if ( method_exists( __CLASS__, $destination ) ) {
+			call_user_func_array( array( __CLASS__, $destination ), array( $expression, $extend, $force ) );
 		} else {
 			self::error_log( $expression, $extend, $force );
 		}
