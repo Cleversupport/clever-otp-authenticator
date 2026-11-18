@@ -61,7 +61,7 @@ class Otpa_Passwordless {
 
 		$class    = ( 'login_footer' === current_filter() ) ? 'otpa-passwordless-login-form-link' : $class;
 		$url      = home_url( 'otpa/passwordless-login' );
-		$redirect = filter_input( INPUT_GET, 'redirect_to', FILTER_SANITIZE_STRING );
+		$redirect = otpa_filter_input_string( INPUT_GET, 'redirect_to' );
 		$url      = ( ! empty( $redirect ) ) ? add_query_arg( 'redirect_to', rawurlencode( $redirect ), $url ) : $url;
 
 		set_query_var( 'class', $class );
