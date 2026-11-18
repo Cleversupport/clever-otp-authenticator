@@ -139,4 +139,4 @@ function otpa_run() {
 		do_action( 'otpa_invalid_settings', $otpa_objects );
 	}
 }
-add_action( 'plugins_loaded', 'otpa_run', 10, 0 );
+add_action( 'init', 'otpa_run', -1, 0 );
