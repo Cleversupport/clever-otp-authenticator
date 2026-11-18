@@ -36,7 +36,13 @@ across the network.
 
 Only nonce-protected authenticated POST reports renew a session. Expiration is
 checked before renewal. Heartbeat, REST calls, page reloads and status checks do
-not renew it. Trusted clicks, keys, touch, scrolling and pointer presses report
+not renew it. Read-only POST status checks authenticate the current cookie and
+session token without requiring the page's possibly stale nonce. They return a
+fresh nonce, opaque session key and native logout link. If login in another page
+changed the cookie session, the old page switches its channel and timer to the
+confirmed session and discards unconfirmed activity from the previous login.
+Activity and Stay Logged In still require a valid nonce; status cannot revive an
+expired session. Trusted clicks, keys, touch, scrolling and pointer presses report
 activity, with 500ms listener throttling, ten-second normal report coalescing and
 immediate reports near the server deadline. Queued reports include interaction
 age, so a delayed report does not turn sleep/wake into new activity. Database updates are throttled to
@@ -73,8 +79,11 @@ without exposing a logout or renewal action.
 
 The warning has a labeled alertdialog, keyboard focus trapping/restoration,
 a per-second timer and a Stay Logged In button. Renewal requires a valid server
-session. On request failures it keeps the warning, retries every five seconds,
-and provides a native nonce-protected WordPress logout link. It never assumes a
+session. Request failures retry every five seconds without opening an expiry
+warning while the last confirmed deadline is outside the warning window. At the
+warning boundary, including while waiting to retry, it shows the verification
+failure and provides a native nonce-protected WordPress logout link. Unconfirmed
+activity cannot postpone that boundary. It never assumes a
 network failure means logout succeeded. CSS uses only namespaced selectors and
 the modal is attached to the document body, outside theme/Elementor containers.
 

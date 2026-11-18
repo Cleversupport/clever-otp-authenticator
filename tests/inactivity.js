@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(__dirname + '/../js/inactivity.js', 'utf8');
 let now = 100000, serverLast = now, ended = false, networkFails = false;
+let serverKey = 'session', serverNonce = 'renewed', serverFallback = '/secure-logout';
 const channels = [];
 const tabs = [], storage = new Map(), requests = [];
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -18,13 +19,14 @@ function tab(options = {}) {
 		return e;
 	}
 	document.createElement = element; document.body = element('body');
-	const t = { hold: false, waiting: [], raw: null, listeners, windowListeners, document, timers, redirects: [], elements };
+	const t = { hold: false, waiting: [], raw: options.raw || null, listeners, windowListeners, document, timers, redirects: [], elements };
 	tabs.push(t);
 	const context = { document, window: { addEventListener: (key, fn) => { windowListeners[key] = fn; } },
 		Date: { now: () => now }, String, JSON, Math, URLSearchParams, AbortController,
 		BroadcastChannel: class {
 			constructor(name) { this.name = name; channels.push(this); }
-			postMessage(data) { channels.filter(channel => channel !== this && channel.name === this.name).forEach(channel => { if (channel.onmessage) { channel.onmessage({ data }); } }); }
+			close() { this.closed = true; this.onmessage = null; }
+			postMessage(data) { channels.filter(channel => channel !== this && !channel.closed && channel.name === this.name).forEach(channel => { if (channel.onmessage) { channel.onmessage({ data }); } }); }
 		},
 		setTimeout: () => 1, clearTimeout() {}, setInterval: fn => timers.push(fn),
 		location: { assign: url => t.redirects.push(url) },
@@ -41,17 +43,19 @@ function tab(options = {}) {
 			const input = new URLSearchParams(options.body);
 			const mode = input.get('mode'); requests.push(mode);
 			if (networkFails) { throw new Error('offline'); }
+			if (mode !== 'status' && input.get('nonce') !== serverNonce) { return { ok: false, text: async () => '-1' }; }
 			let data;
 			if (ended || now - serverLast >= 60000) { ended = true; data = { success: false, data: { expired: true } }; }
 			else {
 				if (mode === 'activity' || mode === 'stay') { serverLast = Math.max(serverLast, mode === 'stay' ? now : now - Number(input.get('idle_ms'))); }
-				data = { success: true, data: { remaining: (serverLast + 60000 - now) / 1000, nonce: 'renewed' } };
+				data = { success: true, data: { remaining: (serverLast + 60000 - now) / 1000, nonce: serverNonce, key: serverKey, fallback: serverFallback } };
 			}
 			const response = { ok: !ended, text: async () => t.raw === null ? JSON.stringify(data) : t.raw };
 			if (t.hold) { return new Promise(resolve => t.waiting.push(() => resolve(response))); }
 			return response;
 		} };
 	vm.runInNewContext(source, context);
+	t.config = context.otpaInactivity;
 	t.tick = async () => { timers[0](); await flush(); };
 	t.interact = async () => { listeners.click({ isTrusted: true }); await flush(); };
 	t.modal = () => document.body.children[0];
@@ -59,6 +63,57 @@ function tab(options = {}) {
 	return t;
 }
 (async () => {
+	const oldPage = tab(); await flush();
+	now += 31000; await oldPage.tick();
+	assert.equal(oldPage.modal().hidden, false);
+	// Login in another page replaces the browser cookie while this document
+	// still has the previous login's nonce, storage key, and logout link.
+	serverKey = 'new-session'; serverNonce = 'new-nonce'; serverFallback = '/secure-logout-new'; serverLast = now;
+	storage.set('session', JSON.stringify({ deadline: now + 600000, activityAt: now + 540000 }));
+	oldPage.listeners.visibilitychange(); await flush();
+	assert.equal(oldPage.config.key, 'new-session');
+	assert.equal(oldPage.config.nonce, 'new-nonce');
+	assert.equal(oldPage.modal().hidden, true);
+	assert.equal(oldPage.modal().children[0].children[4].href, '/secure-logout-new');
+	assert.equal(channels[0].closed, true);
+	assert.equal(serverLast, now);
+	now += 31000; await oldPage.tick();
+	assert.equal(oldPage.modal().hidden, false);
+	oldPage.modal().children[0].children[3].handlers.click(); await flush();
+	assert.equal(oldPage.modal().hidden, true); assert.equal(serverLast, now);
+	assert.equal(oldPage.redirects.length, 0);
+	console.log('PASS: an old page adopts the new cookie session, nonce, timer, channel and logout link without reload or status renewal');
+	tabs.length = 0; channels.length = 0; storage.clear(); requests.length = 0;
+	now = 100000; serverLast = now; serverKey = 'session'; serverNonce = 'renewed'; serverFallback = '/secure-logout';
+	// A page opened before another-page login may hold an old nonce. A failed
+	// verification is not proof that a freshly initialized session is expiring.
+	const stalePage = tab({ raw: '-1' }); await flush();
+	assert(!stalePage.modal() || stalePage.modal().hidden);
+	assert.equal(stalePage.redirects.length, 0);
+	now += 28000; await stalePage.tick();
+	assert(!stalePage.modal() || stalePage.modal().hidden);
+	const beforeWarning = requests.length;
+	now += 3000; await stalePage.tick();
+	assert.equal(requests.length, beforeWarning);
+	assert.equal(stalePage.modal().hidden, false);
+	assert.match(stalePage.modal().children[0].children[2].textContent, /Retrying/);
+	await stalePage.interact();
+	assert.equal(stalePage.modal().hidden, false);
+	console.log('PASS: failed verification stays quiet until the confirmed warning window; unconfirmed activity cannot hide it');
+	stalePage.raw = null; now += 5000; await stalePage.tick();
+	stalePage.modal().children[0].children[3].handlers.click(); await flush();
+	assert.equal(stalePage.modal().hidden, true);
+	assert.equal(stalePage.redirects.length, 0);
+	console.log('PASS: successful re-verification and explicit renewal recover without assuming logout');
+	tabs.length = 0; channels.length = 0; storage.clear(); requests.length = 0;
+	now = 100000; serverLast = now; networkFails = true;
+	const offlinePage = tab(); await flush();
+	assert(!offlinePage.modal() || offlinePage.modal().hidden);
+	networkFails = false; now += 5000; await offlinePage.tick();
+	assert(!offlinePage.modal() || offlinePage.modal().hidden);
+	console.log('PASS: transient network failure after login retries without opening the expiration modal');
+	tabs.length = 0; channels.length = 0; storage.clear(); requests.length = 0;
+	now = 100000; serverLast = now;
 	const a = tab(), b = tab(); await flush();
 	assert.deepEqual(requests, ['status', 'status']); assert.equal(serverLast, 100000);
 	console.log('PASS: loading/polling does not renew session');
@@ -106,7 +161,7 @@ function tab(options = {}) {
 	console.log('PASS: busy renewal is queued and countdown updates while requests are pending');
 	// Bare WordPress 0 is not proof that authentication was invalidated.
 	c.raw = '0'; c.listeners.visibilitychange(); await flush();
-	assert.equal(c.redirects.length, 0); assert.match(c.modal().children[0].children[2].textContent, /Retrying/);
+	assert.equal(c.redirects.length, 0); assert.equal(c.modal().hidden, true);
 	c.raw = null;
 	console.log('PASS: missing AJAX action is handled as failure, never confirmed logout');
 

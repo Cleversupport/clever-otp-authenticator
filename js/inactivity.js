@@ -2,11 +2,17 @@
 (function () {
 	'use strict';
 	var c = otpaInactivity, deadline = Date.now() + c.remaining * 1000;
-	var channel, dialog, counter, button, previousFocus, pending = false, busy = false;
+	var channel, dialog, counter, button, fallback, previousFocus, pending = false, busy = false;
 	var lastEvent = 0, lastReport = 0, retryAt = 0, ended = false;
 	var serverDeadline = deadline, activityVersion = 0, sharedActivity = 0;
 	var queuedStay = false, queuedStatus = false;
-	try { channel = new BroadcastChannel(c.key); } catch (e) { /* Storage remains available. */ }
+	function connect() {
+		try {
+			channel = new BroadcastChannel(c.key);
+			channel.onmessage = function (event) { receive(event.data); };
+		} catch (e) { channel = null; /* Storage remains available. */ }
+	}
+	connect();
 	function read() {
 		try { return JSON.parse(localStorage.getItem(c.key)); } catch (e) { return null; }
 	}
@@ -27,7 +33,6 @@
 	var shared = read();
 	if (shared && shared.logout) { location.assign(c.redirect); return; }
 	receive(shared);
-	if (channel) { channel.onmessage = function (event) { receive(event.data); }; }
 	window.addEventListener('storage', function (event) {
 		if (event.key === c.key && event.newValue) {
 			try { receive(JSON.parse(event.newValue)); } catch (e) { /* Invalid state ignored. */ }
@@ -54,7 +59,7 @@
 			counter = document.createElement('p'); counter.setAttribute('role', 'timer');
 			button = document.createElement('button'); button.type = 'button'; button.textContent = c.stay;
 			button.addEventListener('click', function () { request('stay'); });
-			var fallback = document.createElement('a'); fallback.href = c.fallback; fallback.textContent = c.logout;
+			fallback = document.createElement('a'); fallback.href = c.fallback; fallback.textContent = c.logout;
 			panel.append(title, message, counter, button, fallback); dialog.append(panel); document.body.append(dialog);
 			document.addEventListener('focusin', function (event) {
 				if (!dialog.hidden && !dialog.contains(event.target)) { button.focus(); }
@@ -68,9 +73,15 @@
 		}
 		if (dialog.hidden) { previousFocus = document.activeElement; dialog.hidden = false; button.focus(); }
 	}
+	function showVerificationFailure() {
+		// A rejected request (for example, an old page nonce) does not mean a
+		// fresh session is expiring. Do not extend the last confirmed deadline.
+		if (Math.min(deadline, serverDeadline) - Date.now() > c.warning * 1000) { close(); return; }
+		show(); counter.textContent = c.failure; button.disabled = false;
+	}
 	function failed() {
 		retryAt = Date.now() + 5000;
-		show(); counter.textContent = c.failure; button.disabled = false;
+		showVerificationFailure();
 	}
 	function request(mode) {
 		if (ended) { return; }
@@ -96,6 +107,18 @@
 				// An unstructured 0 may mean a missing/disabled action, not confirmed logout.
 				if (!response.ok || !data || !data.success || typeof data.data.remaining !== 'number' || !isFinite(data.data.remaining) || data.data.remaining < 0 || data.data.remaining > c.timeout) { throw new Error('verification'); }
 				c.nonce = data.data.nonce;
+				if (typeof data.data.key === 'string' && data.data.key && data.data.key !== c.key) {
+					// The cookie now belongs to a different login. Discard optimistic
+					// activity and messages from the previous session before reconciling.
+					if (channel) { channel.close(); }
+					c.key = data.data.key; connect();
+					pending = false; queuedStay = false; queuedStatus = false;
+					lastEvent = 0; sharedActivity = 0; activityVersion = 0; version = 0;
+				}
+				if (typeof data.data.fallback === 'string' && data.data.fallback) {
+					c.fallback = data.data.fallback;
+					if (fallback) { fallback.href = c.fallback; }
+				}
 				serverDeadline = started + data.data.remaining * 1000;
 				var latest = read();
 				deadline = serverDeadline;
@@ -139,7 +162,7 @@
 			if (dialog && !dialog.hidden && !retryAt) { countdown(); }
 			return;
 		}
-		if (retryAt) { if (now >= retryAt) { request('status'); } return; }
+		if (retryAt) { showVerificationFailure(); if (now >= retryAt) { request('status'); } return; }
 		if (pending && (now - lastReport >= 10000 || serverDeadline - now <= 15000)) { request('activity'); return; }
 		var remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
 		if (!remaining || now >= serverDeadline) { request('status'); return; }
