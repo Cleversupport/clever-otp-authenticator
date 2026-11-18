@@ -5,6 +5,42 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Read and sanitize a string request value without deprecated PHP filters.
+ *
+ * @param int    $type          One of the INPUT_* constants.
+ * @param string $variable_name Request variable name.
+ * @param int    $options       Optional filter options, such as FILTER_REQUIRE_ARRAY.
+ * @return mixed Sanitized value, null when the variable is absent, or false when it is invalid.
+ */
+function otpa_filter_input_string( $type, $variable_name, $options = 0 ) {
+	$value = filter_input( $type, $variable_name, FILTER_UNSAFE_RAW, $options );
+
+	if ( null === $value || false === $value ) {
+		return $value;
+	}
+
+	return otpa_sanitize_input_string_value( wp_unslash( $value ) );
+}
+
+/**
+ * Sanitize scalar request values recursively while preserving array keys.
+ *
+ * @param mixed $value Request value.
+ * @return mixed
+ */
+function otpa_sanitize_input_string_value( $value ) {
+	if ( is_array( $value ) ) {
+		foreach ( $value as $key => $item ) {
+			$value[ $key ] = otpa_sanitize_input_string_value( $item );
+		}
+
+		return $value;
+	}
+
+	return is_scalar( $value ) ? sanitize_text_field( (string) $value ) : '';
+}
+
+/**
  * Get the current URL
  *
  * @return string the current URL
