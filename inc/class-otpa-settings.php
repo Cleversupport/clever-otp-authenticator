@@ -26,7 +26,7 @@ class Otpa_Settings {
 			add_action( 'wp_loaded', array( $this, 'init_settings_definition' ), 10, 0 );
 			add_filter( 'plugin_action_links_clever-otp-authenticator-main/clever-otp-authenticator.php', array( $this, 'plugin_action_links' ), 10, 1 );
 
-			add_filter( 'pre_update_option_otpa_settings', array( get_class(), 'sanitize_settings' ), 10, 2 );
+			add_filter( 'pre_update_option_otpa_settings', array( __CLASS__, 'sanitize_settings' ), 10, 2 );
 			add_filter( 'default_option_otpa_settings', array( $this, 'maybe_init_settings' ), 10, 3 );
 		}
 	}
@@ -122,7 +122,7 @@ class Otpa_Settings {
 			'otpa',
 			'otpa_settings',
 			array(
-				'sanitize_callback' => array( get_class(), 'sanitize_settings' ),
+				'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
 			)
 		);
 

@@ -5,6 +5,7 @@ set_error_handler( function ( $severity, $message, $file, $line ) { throw new Er
 define( 'ABSPATH', __DIR__ );
 define( 'MINUTE_IN_SECONDS', 60 );
 define( 'OTPA_PLUGIN_URL', 'https://example.test/plugin/' );
+define( 'OTPA_PLUGIN_PATH', __DIR__ . '/../' );
 class Otpa_Hide_Login_Module { const SETTINGS_GROUP = 'hide'; }
 class WP_Error { public function __construct( $code, $message, $data ) {} }
 class Response extends Exception { public $data; public function __construct( $data ) { $this->data = $data; } }

@@ -24,7 +24,7 @@ class Otpa_Style_Settings {
 			add_filter( 'otpa_page_endpoints', array( $this, 'add_page_endpoint' ), 10, 1 );
 			add_action( 'otpa_page_form_preview', array( $this, 'form_preview' ), 10, 0 );
 
-			add_filter( 'pre_update_option_otpa_style_settings', array( get_class(), 'sanitize_settings' ), 10, 2 );
+			add_filter( 'pre_update_option_otpa_style_settings', array( __CLASS__, 'sanitize_settings' ), 10, 2 );
 			add_filter( 'default_option_otpa_style_settings', array( $this, 'maybe_init_settings' ), 10, 3 );
 		}
 	}
@@ -142,7 +142,7 @@ class Otpa_Style_Settings {
 			'otpa_style',
 			'otpa_style_settings',
 			array(
-				'sanitize_callback' => array( get_class(), 'sanitize_settings' ),
+				'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
 			)
 		);
 
