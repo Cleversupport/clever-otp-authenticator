@@ -3,7 +3,7 @@ Contributors: frogerme
 Tags: 2fa, OTP, passwordless login
 Requires at least: 4.9.5
 Tested up to: 6.7
-Stable tag: 1.0.26
+Stable tag: 1.0.27
 Requires PHP: 7.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -82,6 +82,10 @@ More help can be found on <a href="https://github.com/Cleversupport/clever-otp-a
 Help is provided without compensation for general enquiries and bug fixes only: feature requests, extra integration or conflict resolution with third-party themes or plugins, and specific setup troubleshooting requests will not be addressed without a fee (transfer method and amount at the discretion of the plugin author).
 
 == Changelog ==
+
+= 1.0.27 =
+* Preserve theme and third-party styles on standalone OTP pages so popup visibility, screen-reader text, language switchers and accessibility widgets retain their styling.
+* Replace deprecated string filters in the OTP API request handler with WordPress text sanitization for PHP 8.1+ compatibility.
 
 = 1.0.23 =
 * Add a local Usage Guide tab to the existing admin settings, with shortcode examples, accessible copy buttons and documentation of configuration, security, appearance, Elementor and updates.

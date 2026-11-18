@@ -1,19 +1,5 @@
 /* global OTPA, window */
 jQuery(document).ready(function($) {
-	if ($('body').hasClass('otpa-page')) {
-		$('link[rel="stylesheet"], style').each(function(index, el) {
-			var style = $(el);
-
-			if (
-				style.attr('id') &&
-				style.attr('id').indexOf('otpa') === -1 &&
-				style.attr('id').indexOf('dashicons') === -1
-			) {
-				style.remove();
-			}
-		});
-	}
-
 	var showOtpWrapper = function() {
 		$('.otpa-wrapper').fadeIn();
 	};

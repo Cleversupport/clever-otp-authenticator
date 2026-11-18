@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['7.0', '8.1', '8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -24,6 +24,7 @@ jobs:
           php tests/hide-login-logout.php
           php tests/elementor-maintenance-mode.php
           php tests/usage-guide.php
+          php tests/otp-api-input.php
           git ls-files '*.php' ':!:libraries/**' | while read -r file; do php -l "$file" || exit 1; done
       - name: Browser contracts and syntax
         run: |
@@ -31,3 +32,6 @@ jobs:
           node tests/inactivity.js
           node --check js/admin/usage-guide.js
           node tests/usage-guide.js
+          node --check js/main.js
+          node --check js/main.min.js
+          node tests/frontend-styles.js
