@@ -33,7 +33,7 @@ function expect( $condition, $label ) {
 require __DIR__ . '/../clever-otp-authenticator.php';
 $hook = 'elementor/maintenance_mode/is_login_page';
 expect( isset( $hooks[ $hook ] ), 'exception registered during plugin loading without Elementor' );
-expect( array( $hook, 'plugins_loaded' ) === array_keys( $hooks ), 'bootstrap adds no access-control or option overrides' );
+expect( array( $hook, 'init' ) === array_keys( $hooks ), 'bootstrap defers translated plugin startup to init without access-control or option overrides' );
 
 foreach ( array( '', '/wordpress', '/network/site' ) as $base ) {
 	$home = 'https://example.test' . $base;
