@@ -74,7 +74,7 @@ class Otpa_2FA {
 	}
 
 	public function handle_api_request() {
-		$nonce = filter_input( INPUT_POST, 'nonce', FILTER_SANITIZE_STRING );
+		$nonce = otpa_filter_input_string( INPUT_POST, 'nonce' );
 
 		if ( ! wp_verify_nonce( $nonce, 'otpa_2fa_nonce' ) ) {
 			wp_send_json_error(
@@ -84,7 +84,7 @@ class Otpa_2FA {
 			);
 		}
 
-		$handler       = filter_input( INPUT_POST, 'handler', FILTER_SANITIZE_STRING );
+		$handler       = otpa_filter_input_string( INPUT_POST, 'handler' );
 		$valid_handler = apply_filters(
 			'otpa_2fa_api_valid_callback',
 			method_exists( $this, $this->sanitizer_api_handler( $handler ) ),
@@ -105,7 +105,7 @@ class Otpa_2FA {
 		);
 		$args     = apply_filters(
 			'otpa_2fa_api_callback_args',
-			filter_input( INPUT_POST, 'payload', FILTER_SANITIZE_STRING, FILTER_REQUIRE_ARRAY ),
+			otpa_filter_input_string( INPUT_POST, 'payload', FILTER_REQUIRE_ARRAY ),
 			$handler
 		);
 
@@ -502,7 +502,7 @@ class Otpa_2FA {
 		return (
 			defined( 'REST_REQUEST' ) &&
 			true === REST_REQUEST &&
-			'edit' === filter_input( INPUT_GET, 'context', FILTER_SANITIZE_STRING )
+			'edit' === otpa_filter_input_string( INPUT_GET, 'context' )
 		);
 	}
 

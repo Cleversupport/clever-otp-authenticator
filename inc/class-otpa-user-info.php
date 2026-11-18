@@ -49,7 +49,7 @@ class Otpa_User_Info {
 	public function registration_form_validate( $errors, $sanitized_user_login, $user_email ) {
 
 		if ( is_admin() ) {
-			$identifier = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+			$identifier = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 			$errors     = $this->validate_default_otp_info( $identifier, $errors );
 		}
 
@@ -67,19 +67,19 @@ class Otpa_User_Info {
 	}
 
 	public function registration_form_alter() {
-		$identifier = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$identifier = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 
 		echo $this->get_otp_info_markup( $identifier ); // @codingStandardsIgnoreLine
 	}
 
 
 	public function user_info_form_validate( $errors, $update, $user ) {
-		$identifier = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$identifier = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 		$errors     = $this->validate_default_otp_info( $identifier, $errors, $user );
 	}
 
 	public function save_user_info( $user_id, $old_user_data = false ) {
-		$identifier = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$identifier = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 
 		if ( is_a( $old_user_data, 'WP_User' ) ) {
 
@@ -103,7 +103,7 @@ class Otpa_User_Info {
 		if ( $user ) {
 			$identifier = otpa_get_user_identifier( $user->ID );
 		} else {
-			$identifier = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+			$identifier = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 		}
 
 		if ( is_admin() ) {
@@ -283,7 +283,7 @@ class Otpa_User_Info {
 	}
 
 	public function toggle_user_validation() {
-		$nonce = filter_input( INPUT_POST, 'nonce', FILTER_SANITIZE_STRING );
+		$nonce = otpa_filter_input_string( INPUT_POST, 'nonce' );
 
 		if ( ! wp_verify_nonce( $nonce, 'otpa_user_info_nonce' ) ) {
 			wp_send_json_error(
@@ -320,7 +320,7 @@ class Otpa_User_Info {
 	}
 
 	public function toggle_user_2fa_active() {
-		$nonce = filter_input( INPUT_POST, 'nonce', FILTER_SANITIZE_STRING );
+		$nonce = otpa_filter_input_string( INPUT_POST, 'nonce' );
 
 		if ( ! wp_verify_nonce( $nonce, 'otpa_user_info_nonce' ) ) {
 			wp_send_json_error(

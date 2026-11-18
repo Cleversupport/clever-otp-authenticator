@@ -178,7 +178,7 @@ class Otpa_Settings {
 			wp_die( __( 'Sorry, you are not allowed to access this page.', 'otpa' ) ); // @codingStandardsIgnoreLine
 		}
 
-		$active_tab = filter_input( INPUT_GET, 'tab', FILTER_SANITIZE_STRING );
+		$active_tab = otpa_filter_input_string( INPUT_GET, 'tab' );
 		$active_tab = ( $active_tab ) ? $active_tab : 'settings';
 
 		do_action( 'otpa_settings_page', $active_tab );

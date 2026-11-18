@@ -216,7 +216,7 @@ class Otpa_Woocommerce_Integration extends Otpa_Integration {
 
 	public function validate_address_update( $user_id, $load_address, $address, $customer ) {
 		$post_key     = ( $this->sync_metakey ) ? $this->sync_metakey : 'otp_identifier';
-		$posted_value = filter_input( INPUT_POST, $post_key, FILTER_SANITIZE_STRING );
+		$posted_value = otpa_filter_input_string( INPUT_POST, $post_key );
 		$error        = false;
 
 		if ( $posted_value ) {
@@ -240,7 +240,7 @@ class Otpa_Woocommerce_Integration extends Otpa_Integration {
 	public function account_form_alter() {
 		$user                   = wp_get_current_user();
 		$label                  = apply_filters( 'otpa_otp_identifier_field_label', __( 'One-Time Password Identifier', 'otpa' ) );
-		$value                  = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$value                  = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 		$identifier_description = '';
 		$show_identifier_field  = ( ! $this->sync_metakey );
 		$required               = (
@@ -306,7 +306,7 @@ class Otpa_Woocommerce_Integration extends Otpa_Integration {
 
 	protected function validate_account_details( $errors, $user_id = false, $identifer_required = false ) {
 		$post_key     = ( $this->sync_metakey ) ? $this->sync_metakey : 'otp_identifier';
-		$posted_value = filter_input( INPUT_POST, $post_key, FILTER_SANITIZE_STRING );
+		$posted_value = otpa_filter_input_string( INPUT_POST, $post_key );
 		$error        = false;
 
 		if ( $posted_value ) {
