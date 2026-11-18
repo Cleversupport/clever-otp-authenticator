@@ -194,7 +194,7 @@ class Otpa_UM_Integration extends Otpa_Integration {
 	}
 
 	public function save_account_details( $user_id, $changes ) {
-		$value = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$value = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 
 		if ( $value ) {
 			$this->gateway->set_user_identifier( $value, $user_id );
@@ -207,7 +207,7 @@ class Otpa_UM_Integration extends Otpa_Integration {
 			'otpa_otp_identifier_field_label',
 			__( 'One-Time Password Identifier', 'otpa' )
 		);
-		$value                  = filter_input( INPUT_POST, 'otp_identifier', FILTER_SANITIZE_STRING );
+		$value                  = otpa_filter_input_string( INPUT_POST, 'otp_identifier' );
 		$identifier_description = '';
 		$show_identifier_field  = ( ! $this->sync_metakey );
 
